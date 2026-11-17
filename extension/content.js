@@ -561,8 +561,17 @@
     host.style.setProperty(name, value, 'important');
   }
 
+  /**
+   * The host's inline style without custom properties. Other extensions (dark
+   * mode tools, for one) add "--something" properties to elements they come
+   * across; those cannot change how the host looks, so they are not tampering.
+   */
+  function hostStyleText() {
+    return (host.getAttribute('style') || '').replace(/(^|;)\s*--[\w-]+\s*:[^;]*/g, '$1').replace(/;\s*;/g, ';').trim();
+  }
+
   function stampHost() {
-    styleStamp = host.getAttribute('style') || '';
+    styleStamp = hostStyleText();
   }
 
   function buildHost() {
@@ -606,7 +615,7 @@
    * A click on something the user cannot see must not fill anything in.
    */
   function isHostIntact() {
-    if (!host.isConnected || (host.getAttribute('style') || '') !== styleStamp) return false;
+    if (!host.isConnected || hostStyleText() !== styleStamp) return false;
     const own = getComputedStyle(host);
     if (own.opacity !== '1' || own.visibility !== 'visible' || own.display === 'none' || own.pointerEvents === 'none') return false;
     let opacity = 1;

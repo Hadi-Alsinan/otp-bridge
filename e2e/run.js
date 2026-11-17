@@ -710,7 +710,13 @@ function startFixtureServer() {
     await sleep(200);
     assert.equal(await page.inputValue('#otp'), '');
 
-    // Left alone, it works as usual.
+    // Harmless extras that other extensions add (dark-mode tools set custom properties) are not tampering.
+    await sleep(ARMING_MS);
+    await page.evaluate(() => {
+      const host = document.querySelector('[data-otp-bridge]');
+      host.style.setProperty('--darkreader-inline-bgcolor', '#181a1b');
+      host.setAttribute('data-darkreader-inline-bgcolor', '');
+    });
     await clickRow(page, page);
     assert.equal(await page.inputValue('#otp'), '565656');
     await page.close();
