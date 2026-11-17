@@ -252,6 +252,12 @@ async function commandStart(opts, out) {
 
   if (opts.open !== false) openInBrowser(dashboardUrl(config));
 
+  // A helper that runs unseen in the background should survive a surprise
+  // rather than vanish without a trace.
+  const survive = (err) => log(`Unexpected error (still running): ${err && err.stack ? err.stack : err}`);
+  process.on('uncaughtException', survive);
+  process.on('unhandledRejection', survive);
+
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
     try {
       process.on(signal, () => shutdown(''));

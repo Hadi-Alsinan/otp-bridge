@@ -69,14 +69,21 @@
     <div class="tab-panel" data-panel="android" hidden>
       <ol class="steps">
         <li>Tap <strong>Copy</strong> above.</li>
-        <li>Install an app that forwards incoming SMS to a web address. The free, open-source
-          <strong>SMS to URL Forwarder</strong> works, and so do <strong>MacroDroid</strong>, <strong>Tasker</strong>
-          and <strong>Automate</strong>.</li>
-        <li>Add a forwarding rule for every sender (usually <code>*</code>) and paste the address as the URL.</li>
-        <li>If the app asks for a body or template, send JSON with the message text in a field called
-          <code>text</code>, for example <code>{"from":"%from%","text":"%text%"}</code>.</li>
+        <li>Install an app that passes incoming SMS on to a web address. The free, open-source
+          <strong>SMS to URL Forwarder</strong> does exactly this. <strong>MacroDroid</strong>, <strong>Tasker</strong>
+          and <strong>Automate</strong> can do it too.</li>
+        <li>In the app, add a rule for every sender (usually <code>*</code>), paste the address as the URL
+          and choose <strong>POST</strong> if it asks for a method.</li>
+        <li>Leave the body or template as the app suggests. If you have to write it yourself, send the
+          message text, either on its own or as JSON such as <code>{"from":"%from%","text":"%text%"}</code>.</li>
         <li>Allow the app to read SMS and to keep running in the background (turn off battery optimisation for it).</li>
       </ol>
+      <p class="hint spaced">
+        If Android refuses the SMS permission and mentions a restricted setting, open
+        <strong>Settings</strong>, <strong>Apps</strong>, the forwarding app, tap the three dots at the top,
+        choose <strong>Allow restricted settings</strong>, and grant the permission again. Android does this
+        for apps that were not installed from the Play Store.
+      </p>
       <p class="hint spaced">
         OTP Bridge keeps only messages that contain a verification code. Everything else is dropped the moment it arrives.
       </p>
@@ -92,7 +99,8 @@
     </div>
   </section>
 
-  <footer class="foot">Works while this phone and the computer are on the same network.</footer>
+  <footer class="foot">Works while this phone and the computer are on the same network. The computer can be
+    a Windows PC, a Mac or a Linux machine; the steps on the phone are the same.</footer>
 </div>
 <script src="/assets/phone.js"></script>
 </body>

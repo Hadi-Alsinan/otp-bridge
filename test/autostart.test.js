@@ -96,7 +96,7 @@ test('turning it on installs a working copy and registers it (Linux)', (t) => {
   assert.ok(fs.existsSync(installedCli));
   assert.ok(fs.existsSync(path.join(configDir, 'app', 'extension', 'manifest.json')));
   assert.ok(!fs.existsSync(path.join(configDir, 'app', 'node_modules')));
-  assert.ok(fs.readFileSync(desktopFile, 'utf8').includes(`"${installedCli}" start --no-open`));
+  assert.equal(fs.readFileSync(desktopFile, 'utf8'), linuxDesktopEntry({ nodePath: process.execPath, cliPath: installedCli }));
 
   // The copy runs on its own.
   const version = execFileSync(process.execPath, [installedCli, 'version']).toString().trim();

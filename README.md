@@ -8,6 +8,20 @@ a Mac, with an iPhone or an Android phone.
 
 It is the "AutoFill from iPhone" that Safari has, rebuilt so that it does not need Safari or a Mac.
 
+## Which phone with which computer
+
+Any phone with any computer. The phone only has to send a small web request to the computer, so the
+two never need to be the same brand.
+
+| | Windows PC | Mac | Linux |
+| --- | --- | --- | --- |
+| **iPhone** | yes | yes | yes |
+| **Android phone** | yes | yes | yes |
+
+- An **iPhone** passes the messages on with an automation in its built-in Shortcuts app. Nothing has to be installed on the phone.
+- An **Android phone** passes them on with an SMS forwarding app.
+- On the computer, the browser can be **Chrome, Edge or Brave**. Firefox works with a limitation described below.
+
 ## How it works
 
 ```
@@ -58,6 +72,8 @@ cd otp-bridge
 node companion\cli.js
 ```
 
+(`otp-bridge` is the folder you downloaded or cloned.)
+
 The dashboard opens in your browser. The first time, the system firewall may ask whether Node.js
 may accept connections. Allow it for private networks, otherwise the phone cannot reach the computer.
 
@@ -72,7 +88,8 @@ The dashboard shows these steps with the exact folder to pick.
   **Developer mode**, click **Load unpacked** and choose the `extension` folder.
 - **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and
   choose `extension/manifest.json`. Firefox removes temporary add-ons when it closes, so this has
-  to be repeated after every restart of Firefox.
+  to be repeated after every restart of Firefox. If codes do not appear on websites, open
+  `about:addons`, OTP Bridge, **Permissions**, and allow access to all websites.
 
 Go back to the dashboard tab. It connects to the extension by itself and shows **Browser: connected**.
 Pages that were already open need a reload before codes appear on them.
@@ -100,10 +117,18 @@ word your codes use, for example `OTP`, `verification`, `passcode` or `رمز`.
 
 **Android**
 
-Install an app that forwards incoming SMS to a web address, such as the open-source
-*SMS to URL Forwarder*, or use MacroDroid, Tasker or Automate. Forward every sender to the address,
-with the message text in a JSON field called `text`, for example `{"from":"%from%","text":"%text%"}`.
-Let the app read SMS and run in the background.
+1. Install an app that passes incoming SMS on to a web address. The open-source *SMS to URL Forwarder*
+   does exactly this; MacroDroid, Tasker and Automate can do it too.
+2. Add a rule for every sender (usually `*`), paste the address as the URL, and choose POST.
+3. Leave the body as the app suggests. If you write it yourself, send the message text, on its own or
+   as JSON such as `{"from":"%from%","text":"%text%"}`. OTP Bridge accepts JSON, form fields and plain text.
+4. Let the app read SMS and keep running in the background.
+
+On Android 15 and newer, an app that was not installed from the Play Store is refused the SMS
+permission at first. Open **Settings**, **Apps**, the app, tap the three dots, choose
+**Allow restricted settings**, then grant the permission again.
+
+The steps on the phone are the same whether the computer is a Windows PC or a Mac.
 
 ### 4. Try it
 
@@ -195,7 +220,7 @@ not be run there.
 | The extension in Chromium | 35 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone |
 | Firefox | Not run. The extension is written to the cross-browser rules but has not been loaded in Firefox |
 | Windows and macOS | Not run. The start-at-login files and launch scripts are checked for correct content by tests, but have never been executed on a real PC or Mac |
-| iPhone and Android | Not run. The phone steps are written from the Shortcuts and forwarding-app documentation; the companion is tested with the kinds of requests they send |
+| iPhone and Android | Not run on a phone. The phone steps follow published guides for the Shortcuts automation and the forwarding apps; the companion is tested with the requests these send (JSON, form fields, plain text) |
 
 ## If something does not work
 

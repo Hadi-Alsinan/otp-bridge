@@ -21,6 +21,16 @@ const { execFileSync } = require('node:child_process');
 const LABEL = 'com.otpbridge.companion';
 const INSTALL_ITEMS = ['companion', 'extension', 'package.json'];
 
+/** Copies a file or a whole folder. */
+function copyTree(from, to) {
+  if (fs.statSync(from).isDirectory()) {
+    fs.mkdirSync(to, { recursive: true });
+    for (const name of fs.readdirSync(from)) copyTree(path.join(from, name), path.join(to, name));
+  } else {
+    fs.copyFileSync(from, to);
+  }
+}
+
 function xmlEscape(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -168,9 +178,7 @@ function createAutostart(options) {
     }
     fs.rmSync(installDir, { recursive: true, force: true });
     fs.mkdirSync(installDir, { recursive: true });
-    for (const item of INSTALL_ITEMS) {
-      fs.cpSync(path.join(appRoot, item), path.join(installDir, item), { recursive: true });
-    }
+    for (const item of INSTALL_ITEMS) copyTree(path.join(appRoot, item), path.join(installDir, item));
   }
 
   function launchctl(args) {

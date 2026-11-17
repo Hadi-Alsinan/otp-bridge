@@ -482,6 +482,9 @@ function findAlphanumeric(text, keywords) {
     if (digits === 0 || letters === 0) continue; // all digits are handled above; all letters is a word
     const upperOnly = token === token.toUpperCase();
     if (!upperOnly && digits < 2) continue; // "step2", "Covid19" style words
+    // "Use code SAVE20": a word with a number stuck on is a voucher, not a
+    // one-time code, unless the message plainly calls it a verification code.
+    if (!kw.strong && /^[A-Za-z]{3,}\d{1,3}$/.test(token)) continue;
     return { code: token, score: kw.strong ? 72 : 58, kind: 'alphanumeric' };
   }
   return null;

@@ -236,7 +236,7 @@
       var box = $('#qr');
       if (url) {
         // Markup comes from our own generator and contains no outside text.
-        box.innerHTML = window.OtpBridgeQR.toSvg(window.OtpBridgeQR.encode(url), { border: 2 });
+        box.innerHTML = window.OtpBridgeQR.toSvg(window.OtpBridgeQR.encode(url), { border: 4 });
       } else {
         box.textContent = '';
       }

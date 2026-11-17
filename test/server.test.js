@@ -123,6 +123,57 @@ test('the phone can post a message in every common shape', async (t) => {
   assert.equal((await codes(port)).length, shapes.length);
 });
 
+test('what the usual Android forwarding apps and automation tools send', async (t) => {
+  const { app, port } = await start();
+  t.after(() => app.close());
+  const shapes = [
+    // "SMS to URL Forwarder": JSON built from its template.
+    {
+      name: 'SMS to URL Forwarder',
+      body: '{"from":"+966500000001","text":"Your code is 200001","sentStamp":1763300000000,"receivedStamp":1763300001000,"sim":"sim1"}',
+      type: 'application/json; charset=utf-8',
+      code: '200001',
+      sender: '+966500000001',
+    },
+    // A template filled in without escaping: the quotes and the line break make it invalid JSON.
+    {
+      name: 'hand-written JSON template',
+      body: '{"text":"Your "Acme" code is 200002\nDo not share it"}',
+      type: 'application/json',
+      code: '200002',
+    },
+    // Tasker / MacroDroid / Automate: the message text as the whole body.
+    { name: 'plain text', body: 'Your code is 200003', type: 'text/plain', code: '200003' },
+    { name: 'plain text, no content type', body: 'Your code is 200004', type: undefined, code: '200004' },
+    { name: 'plain text sent as a form', body: 'Your code is 200005', type: 'application/x-www-form-urlencoded', code: '200005' },
+    // Form fields, as some forwarders post them.
+    {
+      name: 'form fields',
+      body: 'from=%2B966500000006&content=%D8%B1%D9%85%D8%B2+%D8%A7%D9%84%D8%AA%D8%AD%D9%82%D9%82%3A+200006&timestamp=1763300000',
+      type: 'application/x-www-form-urlencoded',
+      code: '200006',
+      sender: '+966500000006',
+    },
+    // A gateway app that wraps the message in an event.
+    {
+      name: 'event wrapper',
+      body: JSON.stringify({ deviceId: 'abc', event: 'sms:received', id: 'x1', payload: { message: 'Your code is 200007', phoneNumber: '+966500000007', receivedAt: '2026-11-16T21:00:00Z' }, webhookId: 'w1' }),
+      type: 'application/json',
+      code: '200007',
+    },
+    // A long message that arrived in two parts, joined with a line break.
+    { name: 'two-part message', body: JSON.stringify({ text: 'Dear customer, your one-time password for the transfer is\n200008. Do not share it.' }), type: 'application/json', code: '200008' },
+  ];
+  for (const shape of shapes) {
+    const headers = shape.type ? { 'Content-Type': shape.type } : {};
+    const res = await request(port, { method: 'POST', path: phonePath, headers, body: shape.body });
+    assert.deepEqual(res.json, { ok: true, codeFound: true }, shape.name);
+    const [latest] = await codes(port);
+    assert.equal(latest.code, shape.code, shape.name);
+    if (shape.sender) assert.equal(latest.sender, shape.sender, shape.name);
+  }
+});
+
 test('a code bound to a website keeps that binding on its way to the browser', async (t) => {
   const { app, port } = await start();
   t.after(() => app.close());
