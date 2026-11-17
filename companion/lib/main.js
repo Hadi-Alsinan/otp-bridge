@@ -200,35 +200,42 @@ async function commandStart(opts, out) {
   const mayMove = opts.port === undefined && (created || !config.portConfirmed);
   let port = config.port;
   for (let attempt = 0; ; attempt += 1) {
-    try {
-      await app.listen(port, host);
-      break;
-    } catch (err) {
-      if (err.code !== 'EADDRINUSE') {
-        await app.close();
-        throw new UserError(`Could not start on port ${port}: ${err.message}`);
-      }
-      const found = await probe(port, config.localToken);
-      if (found.what === 'running') {
-        await app.close();
-        out('OTP Bridge is already running on this computer.');
-        out(`  Dashboard:  ${dashboardUrl({ ...config, port })}`);
-        if (found.version && found.version !== version) {
-          out(`  The running copy is version ${found.version}; this folder has version ${version}.`);
-          out('  To switch, run "node companion/cli.js stop" and start again.');
+    // Ask who is on the port before taking it. Windows and macOS let a second
+    // program listen on a port that another holds on a different address
+    // (127.0.0.1 next to 0.0.0.0), so "address in use" alone does not catch a
+    // copy that is already running.
+    let found = await probe(port, config.localToken);
+    if (found.what === 'free') {
+      try {
+        await app.listen(port, host);
+        break;
+      } catch (err) {
+        if (err.code !== 'EADDRINUSE') {
+          await app.close();
+          throw new UserError(`Could not start on port ${port}: ${err.message}`);
         }
-        if (opts.open !== false) openInBrowser(dashboardUrl({ ...config, port }));
-        return 0;
+        found = await probe(port, config.localToken);
       }
-      if (!mayMove || attempt >= PORT_SEARCH_SPAN) {
-        await app.close();
-        const who = found.what === 'foreign' ? 'another copy of OTP Bridge with different settings' : 'another program';
-        throw new UserError(`Port ${port} is being used by ${who}.\n`
-          + 'Close that program, or pick another port with --port <number> '
-          + '(the phone address changes with the port).');
-      }
-      port += 1;
     }
+    if (found.what === 'running') {
+      await app.close();
+      out('OTP Bridge is already running on this computer.');
+      out(`  Dashboard:  ${dashboardUrl({ ...config, port })}`);
+      if (found.version && found.version !== version) {
+        out(`  The running copy is version ${found.version}; this folder has version ${version}.`);
+        out('  To switch, run "node companion/cli.js stop" and start again.');
+      }
+      if (opts.open !== false) openInBrowser(dashboardUrl({ ...config, port }));
+      return 0;
+    }
+    if (!mayMove || attempt >= PORT_SEARCH_SPAN) {
+      await app.close();
+      const who = found.what === 'foreign' ? 'another copy of OTP Bridge with different settings' : 'another program';
+      throw new UserError(`Port ${port} is being used by ${who}.\n`
+        + 'Close that program, or pick another port with --port <number> '
+        + '(the phone address changes with the port).');
+    }
+    port += 1;
   }
 
   if (config.port !== port || !config.portConfirmed) {
