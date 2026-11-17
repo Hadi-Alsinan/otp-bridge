@@ -1,0 +1,117 @@
+name: Tests
+
+# Runs the unit tests, the browser tests and the launch scripts on real
+# Windows, macOS and Linux machines.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+
+  browser:
+    name: Browser tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-${{ matrix.os }}
+          path: e2e/output
+          if-no-files-found: ignore
+
+  windows-launchers:
+    name: Launch script and start at login (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Launch script
+        shell: cmd
+        run: call start-windows.bat version
+      - name: Start at login, hidden
+        shell: pwsh
+        run: |
+          node companion/cli.js autostart on
+          if ($LASTEXITCODE -ne 0) { throw 'Could not switch on start at login.' }
+          $launcher = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\OTP Bridge.wsf'
+          if (-not (Test-Path -LiteralPath $launcher)) { throw 'The launcher was not created.' }
+          cscript.exe //nologo $launcher
+          Start-Sleep -Seconds 6
+          node companion/cli.js status
+          if ($LASTEXITCODE -ne 0) { throw 'The hidden launcher did not start OTP Bridge.' }
+          node companion/cli.js test
+          if ($LASTEXITCODE -ne 0) { throw 'The running copy did not accept a test message.' }
+          node companion/cli.js stop
+      - name: Start at login, visible
+        shell: pwsh
+        run: |
+          node companion/cli.js autostart on --visible
+          if ($LASTEXITCODE -ne 0) { throw 'Could not switch on start at login.' }
+          $launcher = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\OTP Bridge.cmd'
+          if (-not (Test-Path -LiteralPath $launcher)) { throw 'The launcher was not created.' }
+          & $launcher
+          Start-Sleep -Seconds 6
+          node companion/cli.js status
+          if ($LASTEXITCODE -ne 0) { throw 'The visible launcher did not start OTP Bridge.' }
+          node companion/cli.js stop
+          node companion/cli.js autostart off
+
+  macos-launchers:
+    name: Launch script and start at login (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Launch script
+        run: sh ./start-mac.command version
+      - name: The login item is written and is a valid property list
+        run: |
+          node companion/cli.js autostart on || echo "launchctl did not accept the login item in this session"
+          plutil -lint "$HOME/Library/LaunchAgents/com.otpbridge.companion.plist"
+          plutil -p "$HOME/Library/LaunchAgents/com.otpbridge.companion.plist"
+      - name: The login item starts OTP Bridge
+        # Build machines do not always have the desktop session that login items need.
+        continue-on-error: true
+        run: |
+          sleep 6
+          node companion/cli.js status
+          node companion/cli.js test
+      - name: Clean up
+        if: always()
+        run: |
+          node companion/cli.js autostart off || true
+          node companion/cli.js stop || true
