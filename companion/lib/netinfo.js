@@ -98,7 +98,7 @@ function sanitizeHostLabel(name) {
 
 /**
  * The name other devices on the network can use instead of an IP address
- * ("hadis-macbook.local"). Unlike the IP it survives the router handing out
+ * ("study-pc.local"). Unlike the IP it survives the router handing out
  * a new address. Not every network resolves it, so callers must test it.
  */
 function detectLocalHostname(platform = process.platform, timeoutMs = 1500) {

@@ -1,5 +1,8 @@
 # OTP Bridge
 
+[![Tests](https://github.com/Hadi-Alsinan/otp-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Hadi-Alsinan/otp-bridge/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
 A verification code is texted to your phone. A moment later it is waiting under the code box on your
 computer, and one click fills it in. It works in Chrome, Edge, Brave and Firefox, on Windows and on
 a Mac, with an iPhone or an Android phone.
@@ -57,6 +60,15 @@ on your own network.
 It takes about five minutes.
 
 ### 1. Start the companion
+
+Get the project first. With Git:
+
+```sh
+git clone https://github.com/Hadi-Alsinan/otp-bridge.git
+```
+
+Without Git, click the green **Code** button on the
+[project page](https://github.com/Hadi-Alsinan/otp-bridge), choose **Download ZIP** and unpack it.
 
 On a Mac, in Terminal:
 
@@ -232,10 +244,10 @@ Windows, `~/.config/otp-bridge` on Linux.
 
 ### What has been tested
 
-Everything was developed and tested on Linux. Be prepared for rough edges in the parts that could
-not be run there. The workflow in `.github/workflows/ci.yml` runs the unit tests, the browser tests
-and the launch scripts on real Windows, macOS and Linux machines each time the repository is pushed
-to GitHub; it has not had its first run yet.
+Most of this was developed and tested on Linux, with later work on a Mac. Be prepared for rough
+edges in the parts that could not be run. The workflow in `.github/workflows/ci.yml` runs the unit
+tests, the browser tests and the launch scripts on real Windows, macOS and Linux machines for every
+push and pull request; the badge at the top of this page shows the latest result.
 
 | Part | How it was checked |
 | --- | --- |
@@ -243,9 +255,9 @@ to GitHub; it has not had its first run yet.
 | The companion | Automated tests of every route, including the security rules, with Node.js 22 |
 | The extension in Chromium | 36 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone, and pages that try to read or guess the code |
 | Firefox | Not run. The extension is written to the cross-browser rules but has not been loaded in Firefox |
-| Windows and macOS | Not run. The start-at-login files and launch scripts are checked for correct content by tests, but have never been executed on a real PC or Mac |
-| iPhone and Android | Not run on a phone. The phone steps follow published guides for the Shortcuts automation and the forwarding apps; the companion is tested with the requests these send (JSON, form fields, plain text) |
-| The iPhone shortcut | Built and signed on a Mac with Apple's tool; tests check what it contains and that the companion serves it. Adding it on an iPhone has not been tried |
+| Windows and macOS | The launch scripts and start at login run on Windows and macOS build machines. The companion has been used on one Mac. It has not been used on a real Windows PC |
+| Android | Not run on a phone. The steps follow published guides for the forwarding apps; the companion is tested with the requests these send (JSON, form fields, plain text) |
+| The iPhone shortcut | Built and signed on a Mac with Apple's tool; tests check what it contains and that the companion serves it. An earlier version, without the check on the phone, was added and used on one iPhone. The current version, with the check and the single automation, has not been tried on a phone |
 
 ## If something does not work
 
@@ -302,3 +314,17 @@ npx playwright install chromium
 npm run test:e2e
 npm run shortcut    # rebuild and sign the iPhone shortcut (needs a Mac signed in to iCloud)
 ```
+
+## Contributing
+
+Help is welcome. The most useful thing is a text message whose code was not recognised: every one
+becomes a test. Reports from phones, browsers and computers that have not been tried yet come
+next. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to get the project running and what a change
+needs.
+
+To report a security problem, see [SECURITY.md](SECURITY.md). Please do not open a public issue
+for it.
+
+## Licence
+
+[MIT](LICENSE)

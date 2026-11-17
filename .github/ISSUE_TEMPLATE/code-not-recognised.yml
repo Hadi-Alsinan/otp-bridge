@@ -1,0 +1,43 @@
+name: A code was not recognised
+description: A text with a verification code arrived, but OTP Bridge did not find the code, or found the wrong one.
+labels: ["parser"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Every message reported here becomes a test, so the same wording works for everyone afterwards.
+
+        **Before you paste the message:** change the digits of the code, and remove names, amounts and account numbers. Keep the wording and the punctuation exactly as they were.
+  - type: textarea
+    id: message
+    attributes:
+      label: The message
+      description: The text as it arrived, with the digits changed and personal details removed.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: The code that should have been found
+      description: Use the changed digits from the message above.
+      placeholder: "482913"
+    validations:
+      required: true
+  - type: input
+    id: found
+    attributes:
+      label: What OTP Bridge found instead
+      description: Paste the message into "Check a message" on the dashboard and say what it reports.
+      placeholder: No code found
+    validations:
+      required: true
+  - type: input
+    id: sender
+    attributes:
+      label: Who sends messages like this
+      description: The kind of sender is enough, for example "a Saudi bank" or "a delivery app".
+  - type: input
+    id: language
+    attributes:
+      label: Language of the message
