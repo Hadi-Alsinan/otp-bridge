@@ -1,4 +1,4 @@
-# OTP Bridge
+# <img src="extension/icons/icon128.png" width="40" height="40" alt="" align="absmiddle"> OTP Bridge
 
 [![Tests](https://github.com/Hadi-Alsinan/otp-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Hadi-Alsinan/otp-bridge/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
