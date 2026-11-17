@@ -197,6 +197,24 @@
 
     var stateText = setUp ? 'Set up' : 'Not set up';
     if (setUp && phone.lastMessageAt) stateText += ' · last message ' + ago(phone.lastMessageAt);
+    // The phone has opened its setup page but has not sent a real message yet.
+    if (!setUp && phone.lastSeenAt) stateText = 'Phone reached this computer · finish the steps on the phone';
+
+    // The usual reason a phone cannot open the address is the computer's firewall.
+    var firewall = $('#firewall-hint');
+    var hint = '';
+    if (!setUp && !phone.lastSeenAt) {
+      if (state.platform === 'win32') {
+        hint = 'If the phone cannot open the address: Windows asks once whether Node.js may accept connections. '
+          + 'Choose Allow with "Private networks" ticked. To change it later, search for '
+          + '"Allow an app through Windows Firewall".';
+      } else if (state.platform === 'darwin') {
+        hint = 'If the phone cannot open the address and the Mac\'s firewall is on, allow incoming connections '
+          + 'for "node" in System Settings, Network, Firewall, Options.';
+      }
+    }
+    firewall.hidden = !hint;
+    firewall.textContent = hint;
     $('#state-phone').textContent = stateText;
     $('#state-phone').className = 'state' + (phone.hostStale ? ' warn' : setUp ? ' ok' : '');
     $('#num-phone').className = 'num' + (setUp ? ' done' : '');
