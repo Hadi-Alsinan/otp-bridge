@@ -7,7 +7,10 @@ A verification code is texted to your phone. A moment later it is waiting under 
 computer, and one click fills it in. It works in Chrome, Edge, Brave and Firefox, on Windows and on
 a Mac, with an iPhone or an Android phone.
 
-![The suggestion under a code box](docs/suggestion.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/hero/hero-dark.gif">
+  <img src="docs/hero/hero.gif" width="640" alt="A text with a verification code arrives on a phone. On the computer, OTP Bridge offers the code under the website's code box, and one click fills it in.">
+</picture>
 
 It is the "AutoFill from iPhone" that Safari has, rebuilt so that it does not need Safari or a Mac.
 
@@ -161,6 +164,8 @@ The steps on the phone are the same whether the computer is a Windows PC or a Ma
 
 Click **Open the practice page** on the dashboard, then **Send me a test code**. The suggestion
 appears under the box. Click it.
+
+![The suggestion under a code box](docs/suggestion.png)
 
 ### 5. Let it start by itself
 

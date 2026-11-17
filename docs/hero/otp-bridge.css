@@ -1,0 +1,334 @@
+/* The section background is the stage: light gray, no box. One gutter for the
+   window's top and left and the phone's right. */
+.ob .ss-stage {
+  --gutter: 32px;
+  /* The card's own width with these words; the code box takes it too */
+  --card: 252px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ss-well);
+}
+
+/* The website: pinned top-left, runs about a quarter past the bottom */
+.ob-window {
+  position: absolute;
+  top: var(--gutter);
+  left: var(--gutter);
+  width: 496px;
+  height: 460px;
+  border-radius: 10px;
+  background: var(--ss-surface);
+  box-shadow: var(--ss-shadow-hero);
+}
+
+.ob-page {
+  height: 100%;
+  background: var(--ss-surface);
+}
+
+.ob-site {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 44px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--ss-line-faint);
+}
+
+.ob-wordmark {
+  margin-right: 10px;
+  color: var(--ss-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ob-main {
+  padding: 26px 28px 0;
+}
+
+.ob-title {
+  color: var(--ss-text-strong);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.ob-sub {
+  display: block;
+  margin-top: 6px;
+  color: var(--ss-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* The website is neutral: its focus ring is ink, so the one color in the
+   window belongs to the product's card. The box is as wide as the card that
+   opens under it. */
+.ob-code {
+  --ss-control: 40px;
+  --ss-accent: var(--ss-text-strong);
+  --ss-accent-soft: transparent;
+  width: var(--card);
+  margin-top: 18px;
+}
+
+.ob-code .ss-field__box {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+/* The code leaves the box by fading, when the loop resets */
+.ob-code .ss-field__value {
+  transition: opacity 0.22s ease;
+}
+
+.ob-code[data-clearing] .ss-field__value {
+  opacity: 0;
+}
+
+/* The caret goes with the code, and comes back at the start of the empty box */
+.ob-code[data-clearing] .ss-field__caret {
+  visibility: hidden;
+}
+
+.ob-help {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+/* The page's foot: a rule, clear of the open card above it, and a line of
+   footer links */
+.ob-foot {
+  display: flex;
+  gap: 18px;
+  margin-top: 46px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ss-line);
+}
+
+/* OTP Bridge's card, with the values the extension uses */
+.ob-card {
+  position: absolute;
+  z-index: 3;
+  width: var(--card);
+  height: 58px;
+  overflow: hidden;
+  border: 1px solid rgba(20, 24, 40, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(20, 24, 40, 0.18), 0 1px 3px rgba(20, 24, 40, 0.08);
+  color: #171b26;
+  font: 13px/1.35 var(--ss-font);
+  /* Arrives whole from just above, on a layer it keeps, so its words land
+     without a hop */
+  opacity: 0;
+  translate: 0 -4px;
+  transition: opacity 0.18s ease, translate 0.18s ease, width 0.4s cubic-bezier(0.45, 0, 0.1, 1), height 0.4s cubic-bezier(0.45, 0, 0.1, 1);
+  will-change: transform;
+}
+
+.ob-card[data-show] {
+  opacity: 1;
+  translate: 0 0;
+  transition: opacity 0.2s ease-out, translate 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.4s cubic-bezier(0.45, 0, 0.1, 1), height 0.4s cubic-bezier(0.45, 0, 0.1, 1);
+}
+
+/* Filled in: the card takes the size of the product's note (its minimum
+   width, one line), and the offer hands over to the note inside it */
+.ob-card[data-filled] {
+  width: 228px;
+  height: 40px;
+}
+
+.ob-offer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: stretch;
+  width: calc(var(--card) - 2px);
+  height: 56px;
+  transition: opacity 0.15s ease;
+}
+
+.ob-card[data-filled] .ob-offer {
+  opacity: 0;
+}
+
+.ob-offer-rows {
+  flex: 1;
+  min-width: 0;
+  padding: 4px;
+}
+
+.ob-offer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px 7px 8px;
+  border-radius: 9px;
+  transition: background-color 0.12s ease;
+}
+
+.ob-offer-row[data-hover],
+.ob-offer-row[data-pressed] {
+  background: #ecedff;
+}
+
+.ob-offer-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #6d6ff5, #2f5fe8);
+}
+
+.ob-offer-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ob-offer-title {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ob-offer-code {
+  margin-left: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+.ob-offer-code span + span {
+  margin-left: 0.3em;
+}
+
+.ob-offer-sub {
+  color: #5a6475;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ob-offer-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  border-left: 1px solid rgba(20, 24, 40, 0.08);
+  color: #7a8394;
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* The note the card turns into once the code is in the box */
+.ob-filled {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  color: #0c7a45;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.ob-card[data-filled] .ob-filled {
+  opacity: 1;
+  transition: opacity 0.25s ease-out 0.12s;
+}
+
+/* The phone straddles the window's right edge over empty page; its top sits in
+   the upper half of the stage and the stage crops its base. Stronger shadow
+   than the window: a level above. */
+.ob-phone {
+  position: absolute;
+  top: 84px;
+  right: var(--gutter);
+  box-shadow: var(--ss-shadow-satellite), 0 30px 50px -20px rgba(50, 50, 93, 0.35);
+}
+
+/* The text drops in by margin, not transform, so its words land without a hop */
+.ob-note {
+  margin-block: -12px 12px;
+  opacity: 0;
+  transition: opacity 0.2s ease, margin 0.3s ease;
+}
+
+.ob-note[data-show] {
+  margin-block: 0;
+  opacity: 1;
+  transition: opacity 0.45s ease-out, margin 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* A monogram has no app tile behind it */
+.ob-note .ss-notification__icon {
+  background: none;
+}
+
+/* Narrow: the window keeps a window's shape and runs off the right; a larger
+   phone stands centered under the card, well inside the window's left edge,
+   straddling its bottom edge and running off the bottom of the stage */
+.ob .ss-stage[data-layout='compact'] {
+  --gutter: 16px;
+}
+
+.ob .ss-stage[data-layout='compact'] .ob-window {
+  width: 420px;
+  height: 334px;
+}
+
+.ob .ss-stage[data-layout='compact'] .ob-site {
+  padding: 0 22px;
+}
+
+.ob .ss-stage[data-layout='compact'] .ob-main {
+  padding: 24px 22px 0;
+}
+
+/* The page's foot would sit under the phone */
+.ob .ss-stage[data-layout='compact'] .ob-foot {
+  display: none;
+}
+
+.ob .ss-stage[data-layout='compact'] .ob-phone {
+  top: 310px;
+  right: 34px;
+}
+
+/* Dark: the card takes the colors the extension gives it on a dark page */
+.ob .ss-stage[data-theme='dark'] .ob-card {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: #1c1f2a;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: #eef0f6;
+}
+
+.ob .ss-stage[data-theme='dark'] .ob-offer-row[data-hover],
+.ob .ss-stage[data-theme='dark'] .ob-offer-row[data-pressed] {
+  background: #2a2e52;
+}
+
+.ob .ss-stage[data-theme='dark'] .ob-offer-sub {
+  color: #a0a8b8;
+}
+
+.ob .ss-stage[data-theme='dark'] .ob-offer-close {
+  border-left-color: rgba(255, 255, 255, 0.1);
+  color: #9aa3b4;
+}
+
+.ob .ss-stage[data-theme='dark'] .ob-filled {
+  color: #52d492;
+}
