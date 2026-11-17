@@ -219,6 +219,16 @@ for (const [message, expected] of CASES) {
   });
 }
 
+test('long, repetitive messages are handled quickly', () => {
+  for (const unit of ['otp 1234 ', 'code 123456 ', '1234 otp ', 'رمز 1234 ', 'a.', '1.', 'code is ', 'http://a ', '@a.b #1234 ']) {
+    const message = unit.repeat(Math.ceil(4000 / unit.length)).slice(0, 4000);
+    const started = process.hrtime.bigint();
+    extractOtp(message);
+    const ms = Number(process.hrtime.bigint() - started) / 1e6;
+    assert.ok(ms < 500, `${JSON.stringify(unit)} repeated took ${ms.toFixed(0)} ms`);
+  }
+});
+
 test('extractOtp tolerates odd input', () => {
   assert.equal(extractOtp(undefined), null);
   assert.equal(extractOtp(null), null);

@@ -699,7 +699,12 @@ function createCompanion(options) {
   async function route(req, res) {
     baseHeaders(res);
     if (typeof req.url !== 'string' || !req.url.startsWith('/')) throw new HttpError(400, 'bad-request');
-    const url = new URL(req.url, 'http://otp-bridge.invalid');
+    let url;
+    try {
+      url = new URL(req.url, 'http://otp-bridge.invalid');
+    } catch {
+      throw new HttpError(400, 'bad-request');
+    }
     const { pathname } = url;
 
     if (pathname === '/ping') {

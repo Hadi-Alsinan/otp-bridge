@@ -365,17 +365,19 @@ function scoreCandidate(text, cand, keywords) {
 
   for (const kw of keywords) {
     let bonus = 0;
-    if (kw.end <= cand.start) {
+    // Only keywords close to the number are looked at in detail; a message
+    // can hold hundreds of both, and most pairs are far apart.
+    if (kw.end <= cand.start && cand.start - kw.end <= 90) {
       const gap = text.slice(kw.end, cand.start);
       if (gap.length <= 20 && TIGHT_GAP.test(gap)) {
         bonus = kw.strong ? 60 : 50;
-      } else if (gap.length <= 90 && !SENTENCE_BREAK.test(gap)) {
+      } else if (!SENTENCE_BREAK.test(gap)) {
         bonus = (kw.strong ? 44 : 32) - Math.min(15, gap.length / 4);
         if (/\d{3,}/.test(gap)) bonus /= 2; // another number sits between them
       }
-    } else if (kw.start >= cand.end) {
+    } else if (kw.start >= cand.end && kw.start - cand.end <= 48) {
       const gap = text.slice(cand.end, kw.start);
-      if (gap.length <= 48 && !SENTENCE_BREAK.test(gap) && !/\d{3,}/.test(gap)) {
+      if (!SENTENCE_BREAK.test(gap) && !/\d{3,}/.test(gap)) {
         bonus = (kw.strong ? 55 : 42) - Math.min(12, gap.length / 4);
       }
     }

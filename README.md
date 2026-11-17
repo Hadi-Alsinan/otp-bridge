@@ -143,7 +143,8 @@ background and you do not need the terminal window.
 ## Using it
 
 When a code arrives and the page you are on has a code box, the suggestion appears under the box.
-Click it, or press the down arrow and then Enter. Codes are offered for three minutes.
+Click it, or press the down arrow and then Enter. Codes are offered for three minutes. If you start
+typing the code yourself, the suggestion steps aside.
 
 If a website's code box is not recognised:
 
@@ -183,8 +184,9 @@ phone has to be updated after changing it.
 - **The phone talks to the computer in plain HTTP.** Someone who can listen in on your network
   could see a code as it passes. Use this on networks you trust: at home, or on your own hotspot.
 - **What a website can see.** Nothing until you click. The suggestion is drawn in a way page scripts
-  cannot read, and it ignores clicks made by scripts. When a message names the website its code is
-  for (`@example.com #123456`), the code is only offered on that website.
+  cannot read, it ignores clicks made by scripts, and it does not react to anything a page puts in
+  its own code box, so a page cannot find the code by guessing. When a message names the website its
+  code is for (`@example.com #123456`), the code is only offered on that website.
 - **What is still possible.** Like every autofill that draws inside a web page, a malicious page
   could in theory cover the suggestion with something else and trick you into clicking it. It would
   need to be the page you are looking at within three minutes of a code arriving.
@@ -211,13 +213,15 @@ Windows, `~/.config/otp-bridge` on Linux.
 ### What has been tested
 
 Everything was developed and tested on Linux. Be prepared for rough edges in the parts that could
-not be run there.
+not be run there. The workflow in `.github/workflows/ci.yml` runs the unit tests, the browser tests
+and the launch scripts on real Windows, macOS and Linux machines each time the repository is pushed
+to GitHub; it has not had its first run yet.
 
 | Part | How it was checked |
 | --- | --- |
-| Finding the code in a message | 189 sample messages in English, Arabic and 19 other languages; 36 of them are messages that must be ignored |
+| Finding the code in a message | 192 sample messages in English, Arabic and 19 other languages; 39 of them are messages that must be ignored |
 | The companion | Automated tests of every route, including the security rules, with Node.js 22 |
-| The extension in Chromium | 35 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone |
+| The extension in Chromium | 36 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone, and pages that try to read or guess the code |
 | Firefox | Not run. The extension is written to the cross-browser rules but has not been loaded in Firefox |
 | Windows and macOS | Not run. The start-at-login files and launch scripts are checked for correct content by tests, but have never been executed on a real PC or Mac |
 | iPhone and Android | Not run on a phone. The phone steps follow published guides for the Shortcuts automation and the forwarding apps; the companion is tested with the requests these send (JSON, form fields, plain text) |

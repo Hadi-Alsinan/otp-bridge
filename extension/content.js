@@ -320,7 +320,7 @@
   let target = null;              // the code field in play right now (focused, or the obvious one)
   let anchor = null;              // the field the suggestion is attached to
   let activeRow = -1;             // row highlighted with the keyboard
-  let escapedField = null;        // field on which Escape hid the suggestion
+  let escapedField = null;        // field where the user sent the suggestion away (Escape, or by typing)
   let contextTarget = null;       // what was right-clicked last
   let noticeTimer = null;
   let expiryTimer = null;
@@ -365,10 +365,6 @@
     return true;
   }
 
-  function currentValue(field) {
-    if (field.boxes) return field.boxes.map((box) => box.value).join('');
-    return field.el.value.replace(/[\s-]/g, '');
-  }
 
   // ---------------------------------------------------------------------------
   // Scanning the page
@@ -860,11 +856,9 @@
       return;
     }
 
-    // Typed by hand, or filled by us a moment ago: nothing left to offer.
-    const value = currentValue(target);
-    for (const entry of codes) {
-      if (value && value === entry.code && !hiddenCodes.has(entry.id)) reportUsed(entry.id);
-    }
+    // Nothing here may depend on what the field contains. A page can put any
+    // value into its own field; if the suggestion reacted to a correct one,
+    // the page could find the code by trying them all.
 
     const entries = offeredCodes(target).slice(0, 3);
     if (entries.length === 0) {
@@ -1057,9 +1051,15 @@
     setTimeout(update, 0);
   }
 
+  // Someone who starts typing in the field has chosen to enter the code by
+  // hand, so the suggestion steps aside (whatever they type: see `update`).
+  // Only real key presses count, not input events made by the page.
   function onInput(event) {
+    if (!event.isTrusted || !isShowingCodes()) return;
     const el = typeof event.composedPath === 'function' ? event.composedPath()[0] : event.target;
-    if (el instanceof HTMLInputElement && codes.length) setTimeout(update, 0);
+    if (el !== anchor.el && !(anchor.boxes && anchor.boxes.includes(el))) return;
+    escapedField = anchor.el;
+    hide();
   }
 
   function onMessage(message, sender, sendResponse) {

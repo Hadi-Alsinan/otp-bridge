@@ -401,15 +401,61 @@ function startFixtureServer() {
     await page.close();
   });
 
-  test('typing the code by hand makes the suggestion go away', async () => {
+  test('starting to type by hand makes the suggestion step aside', async () => {
     const page = await open('/single.html');
     await sms('Your code is 864213');
     await waitChip(page);
     await page.click('#otp');
-    await page.keyboard.type('864213', { delay: 30 });
+    await page.keyboard.type('1');                          // any key, not just the right digits
     await waitNoChip(page);
-    await sleep(300);
-    assert.ok(entryFor('864213').usedAt);
+    await page.keyboard.type('23456');
+    await expectNoChip(page, 2000);
+    assert.equal(await page.inputValue('#otp'), '123456');
+    // It comes back when the field is entered again, or when a new code arrives.
+    await page.click('h1');
+    await page.click('#otp');
+    await waitChip(page);
+    await page.close();
+  });
+
+  test('a page cannot find the code by trying values in its own field', async () => {
+    const page = await open('/single.html');
+    await sms('Your code is 048213');
+    await waitChip(page);
+    // What a hostile page would do: write guesses into the field, fire the
+    // events typing would fire, and watch whether the suggestion reacts.
+    const watched = await page.evaluate(async () => {
+      const field = document.getElementById('otp');
+      const host = () => document.querySelector('[data-otp-bridge][data-state="codes"]');
+      const seen = new Set();
+      const look = () => {
+        const el = host();
+        seen.add(el ? `shown:${el.dataset.count}:${Math.round(el.getBoundingClientRect().width)}` : 'gone');
+      };
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      for (let guess = 48000; guess <= 48400; guess += 1) {
+        const value = String(guess).padStart(6, '0');
+        setter.call(field, value);
+        field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: value, inputType: 'insertText' }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        if (guess % 40 === 0 || value === '048213') {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          look();
+        }
+      }
+      // Leave the right answer in the field while the extension's timers run.
+      setter.call(field, '048213');
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.focus();
+      for (let i = 0; i < 16; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        look();
+      }
+      return [...seen];
+    });
+    assert.equal(watched.length, 1, `the suggestion reacted to a guess: ${watched.join(', ')}`);
+    assert.match(watched[0], /^shown:1:/);
+    assert.equal(entryFor('048213').usedAt, null, 'nothing was reported as used');
     await page.close();
   });
 

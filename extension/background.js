@@ -76,7 +76,12 @@ async function savePairing(baseUrl, token) {
   await api.storage.local.set({ pairing: { baseUrl, token, pairedAt: Date.now() } });
 }
 
-/** The dashboard page offers its token; accept it unless a working pairing points elsewhere. */
+/**
+ * The dashboard page offers its token. A first pairing is accepted, and so is
+ * a new token from the address already paired with. Switching to a different
+ * address needs the user to disconnect in the popup first: any page served
+ * from this computer could otherwise point the extension at itself.
+ */
 async function handlePairOffer(message, sender) {
   const baseUrl = loopbackBase(sender.url || '');
   if (!baseUrl || sender.frameId !== 0) return { ok: false, reason: 'not-local' };
@@ -87,7 +92,7 @@ async function handlePairOffer(message, sender) {
   if (current && current.baseUrl === baseUrl && current.token === message.token) {
     return { ok: await verify(current), reason: 'unreachable', version: VERSION };
   }
-  if (current && current.baseUrl !== baseUrl && await verify(current)) {
+  if (current && current.baseUrl !== baseUrl) {
     return { ok: false, reason: 'paired-elsewhere', version: VERSION };
   }
   const candidate = { baseUrl, token: message.token };

@@ -8,6 +8,8 @@ const os = require('node:os');
 const { createCompanion, parseIncomingMessage, hostIsLoopback, SESSION_COOKIE } = require('../companion/lib/server');
 const { newToken } = require('../companion/lib/config');
 
+const net = require('node:net');
+
 const LOCAL_TOKEN = newToken();
 const PHONE_TOKEN = newToken();
 
@@ -550,6 +552,28 @@ test('only the listed asset files are served', async (t) => {
     const res = await request(port, { path });
     assert.equal(res.status, 404, path);
   }
+});
+
+test('malformed requests get a plain refusal and do not disturb the server', async (t) => {
+  const { app, port } = await start();
+  t.after(() => app.close());
+  const raw = (text) => new Promise((resolve) => {
+    const socket = net.connect(port, '127.0.0.1', () => socket.write(text));
+    let data = '';
+    socket.on('data', (chunk) => { data += chunk; });
+    socket.on('close', () => resolve(data));
+    socket.on('error', () => resolve(data));
+    setTimeout(() => socket.destroy(), 1500);
+  });
+  const statusOf = (response) => Number((/^HTTP\/1\.1 (\d+)/.exec(response) || [])[1]);
+  for (const target of ['//', '///x', '/%', '/p/%00', '/p/%E0%A4%A', '/?k=%E0%A4%A', '/api/codes?rev=1e999&wait=NaN', `/${'a'.repeat(5000)}`, '*', 'http://evil.example/api/state']) {
+    const response = await raw(`GET ${target} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nConnection: close\r\n\r\n`);
+    const status = statusOf(response);
+    assert.ok(status >= 400 && status < 500, `${target} -> ${status}`);
+  }
+  // Still healthy afterwards.
+  assert.equal((await request(port, { path: '/ping' })).status, 200);
+  assert.equal((await request(port, { path: '/api/status', headers: bearer })).status, 200);
 });
 
 test('unknown routes and methods', async (t) => {
