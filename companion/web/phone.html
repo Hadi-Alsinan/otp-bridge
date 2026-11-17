@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTP Bridge: connect your phone</title>
+<link rel="icon" href="/assets/icon.svg">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div class="page phone-page">
+
+  <header class="top">
+    <div class="brand">
+      <img src="/assets/icon.svg" width="40" height="40" alt="">
+      <div>
+        <h1>OTP Bridge</h1>
+        <p>Connect this phone</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="big-check">
+      <span class="dot" aria-hidden="true">✓</span>
+      <span>This phone can reach <span id="computer-name">your computer</span>.</span>
+    </div>
+    <p class="spaced">One thing left: tell the phone to pass verification codes on to this address.</p>
+    <div class="copy-row">
+      <code id="hook-url"></code>
+      <button class="small primary" id="copy-url">Copy</button>
+    </div>
+    <p class="hint spaced" id="url-note"></p>
+    <button class="small quiet" id="url-switch" hidden></button>
+  </section>
+
+  <section class="card">
+    <h2>Set it up</h2>
+    <div class="tabs" role="tablist">
+      <button class="small" role="tab" data-tab="iphone" aria-selected="true">iPhone</button>
+      <button class="small" role="tab" data-tab="android" aria-selected="false">Android</button>
+    </div>
+
+    <div class="tab-panel" data-panel="iphone">
+      <ol class="steps">
+        <li>Tap <strong>Copy</strong> above.</li>
+        <li>Open the <strong>Shortcuts</strong> app and go to the <strong>Automation</strong> tab.</li>
+        <li>Tap <strong>+</strong> (or <strong>New Automation</strong>) and choose <strong>Message</strong>.</li>
+        <li>Tap <strong>Message Contains</strong>, type <code>code</code>, then tap <strong>Done</strong>.</li>
+        <li>Choose <strong>Run Immediately</strong>, then tap <strong>Next</strong>.</li>
+        <li>Tap <strong>New Blank Automation</strong>, search for <strong>Get Contents of URL</strong> and add it.</li>
+        <li>Tap the address field of that action and paste.</li>
+        <li>Tap the small arrow next to the address to show more options. Set <strong>Method</strong> to
+          <strong>POST</strong> and <strong>Request Body</strong> to <strong>JSON</strong>.</li>
+        <li>Tap <strong>Add new field</strong>, choose <strong>Text</strong>, and type <code>message</code> as the key.
+          Tap the value next to it and pick <strong>Shortcut Input</strong> from the bar above the keyboard.</li>
+        <li>Tap <strong>Done</strong>.</li>
+      </ol>
+      <p class="hint spaced">
+        The automation only fires for messages that contain the word you typed. Codes that use other words
+        need their own automation: repeat the steps with <code>OTP</code>, <code>verification</code>,
+        <code>passcode</code> or <code>رمز</code>, whichever your banks and apps use.
+      </p>
+      <p class="hint spaced">
+        The first time it runs, iOS may ask whether Shortcuts can find devices on your local network. Choose Allow.
+      </p>
+    </div>
+
+    <div class="tab-panel" data-panel="android" hidden>
+      <ol class="steps">
+        <li>Tap <strong>Copy</strong> above.</li>
+        <li>Install an app that forwards incoming SMS to a web address. The free, open-source
+          <strong>SMS to URL Forwarder</strong> works, and so do <strong>MacroDroid</strong>, <strong>Tasker</strong>
+          and <strong>Automate</strong>.</li>
+        <li>Add a forwarding rule for every sender (usually <code>*</code>) and paste the address as the URL.</li>
+        <li>If the app asks for a body or template, send JSON with the message text in a field called
+          <code>text</code>, for example <code>{"from":"%from%","text":"%text%"}</code>.</li>
+        <li>Allow the app to read SMS and to keep running in the background (turn off battery optimisation for it).</li>
+      </ol>
+      <p class="hint spaced">
+        OTP Bridge keeps only messages that contain a verification code. Everything else is dropped the moment it arrives.
+      </p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Test the connection</h2>
+    <p>Sends a made-up code from this phone to your computer.</p>
+    <div class="actions">
+      <button class="primary" id="send-test">Send a test code</button>
+      <span id="test-out" role="status"></span>
+    </div>
+  </section>
+
+  <footer class="foot">Works while this phone and the computer are on the same network.</footer>
+</div>
+<script src="/assets/phone.js"></script>
+</body>
+</html>

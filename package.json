@@ -1,0 +1,24 @@
+{
+  "name": "otp-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fill in verification codes sent to your phone with one click, in any browser on Mac and Windows.",
+  "bin": {
+    "otp-bridge": "companion/cli.js"
+  },
+  "scripts": {
+    "start": "node companion/cli.js",
+    "test": "node --test",
+    "test:e2e": "node e2e/run.js",
+    "icons": "node scripts/make-icons.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "jsqr": "^1.4.0",
+    "playwright": "^1.50.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OTP Bridge</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <img src="icons/icon48.png" width="28" height="28" alt="">
+  <h1>OTP Bridge</h1>
+  <span class="dot" id="dot" title=""></span>
+</header>
+
+<main id="view-loading">
+  <p class="muted">Checking…</p>
+</main>
+
+<main id="view-unpaired" hidden>
+  <p class="lead">Not connected yet</p>
+  <p class="muted">Start OTP Bridge on this computer and open its dashboard in this browser. The extension connects by itself.</p>
+  <button class="primary" id="open-default">Open OTP Bridge</button>
+  <details>
+    <summary>Connect with the private link instead</summary>
+    <p class="muted">Paste the dashboard link that OTP Bridge showed when it started.</p>
+    <input type="text" id="link" placeholder="http://127.0.0.1:4812/?k=…" autocomplete="off" spellcheck="false">
+    <button id="connect">Connect</button>
+    <p class="error" id="link-error" hidden></p>
+  </details>
+</main>
+
+<main id="view-offline" hidden>
+  <p class="lead">OTP Bridge is not running</p>
+  <p class="muted">Start it on this computer, then try again. To have it start by itself, switch on “Start OTP Bridge when I log in” on its dashboard.</p>
+  <button class="primary" id="retry">Try again</button>
+  <button class="link" id="disconnect-offline">Disconnect this browser</button>
+</main>
+
+<main id="view-online" hidden>
+  <div class="warn" id="stale" hidden>Your phone is sending codes to an old address of this computer. Open the dashboard to fix it.</div>
+  <div id="codes"></div>
+  <p class="muted" id="empty" hidden>No codes in the last 10 minutes.</p>
+  <p class="muted small" id="phone-line"></p>
+  <footer>
+    <button class="link" id="dashboard">Open dashboard</button>
+    <button class="link" id="disconnect">Disconnect</button>
+  </footer>
+</main>
+
+<script src="popup.js"></script>
+</body>
+</html>

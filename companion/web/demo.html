@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTP Bridge practice page</title>
+<link rel="icon" href="/assets/icon.svg">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div class="page demo-page">
+
+  <header class="top">
+    <div class="brand">
+      <img src="/assets/icon.svg" width="40" height="40" alt="">
+      <div>
+        <h1>Practice page</h1>
+        <p>A code box like the ones on real websites. <a href="/">Back to OTP Bridge</a></p>
+      </div>
+    </div>
+  </header>
+
+  <div class="notice" id="no-extension" hidden>
+    The browser extension is not connected in this browser yet, so no suggestion will appear.
+    Go back to OTP Bridge and finish step 1.
+  </div>
+
+  <section class="card demo-panel">
+    <h2>Enter the code we sent you</h2>
+    <p>Press the button, then click in the box. The code shows up right under it.</p>
+    <div class="demo-block">
+      <input class="otp-single" id="otp" type="text" inputmode="numeric" autocomplete="one-time-code"
+        maxlength="6" placeholder="••••••" aria-label="Verification code">
+    </div>
+    <div class="actions demo-actions">
+      <button class="primary" id="send">Send me a test code</button>
+      <button id="reset">Start over</button>
+    </div>
+    <p class="hint spaced" id="status" role="status"></p>
+    <div class="success" id="success" hidden>It works. Real websites behave the same way.</div>
+  </section>
+
+  <section class="card demo-panel">
+    <h2>Some sites use separate boxes</h2>
+    <p>Click in the first box and choose the suggestion.</p>
+    <div class="demo-block">
+      <div class="otp-boxes" id="boxes">
+        <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 1">
+        <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 2">
+        <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 3">
+        <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 4">
+        <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 5">
+        <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 6">
+      </div>
+    </div>
+    <div class="success" id="success-boxes" hidden>All six boxes are filled in.</div>
+  </section>
+</div>
+<script src="/assets/demo.js"></script>
+</body>
+</html>

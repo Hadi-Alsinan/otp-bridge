@@ -1,0 +1,5 @@
+# Same line endings everywhere, so scripts work whichever system fetched them.
+* text=auto eol=lf
+# Windows batch files must keep their CRLF line endings exactly as stored.
+*.bat -text
+*.png binary

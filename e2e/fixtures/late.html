@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fields that appear later</title>
+<link rel="stylesheet" href="/fixture.css">
+</head>
+<body>
+<main>
+  <h1>Sign in</h1>
+  <div id="step1"><p>Sending you a code…</p></div>
+  <div id="step2" class="hidden">
+    <p>Enter the verification code.</p>
+    <input id="revealed" name="verificationCode" maxlength="6" inputmode="numeric">
+  </div>
+  <div id="slot"></div>
+</main>
+<script src="/late.js"></script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTP Bridge</title>
+<link rel="icon" href="/assets/icon.svg">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div class="brand">
+      <img src="/assets/icon.svg" width="44" height="44" alt="">
+      <div>
+        <h1>OTP Bridge</h1>
+        <p>Verification codes from your phone, one click away on <span id="computer-name">this computer</span>.</p>
+      </div>
+    </div>
+    <div class="pills">
+      <span class="pill" id="pill-browser">Browser: checking</span>
+      <span class="pill" id="pill-phone">Phone: checking</span>
+    </div>
+  </header>
+
+  <div class="notice" id="offline" hidden>OTP Bridge is not answering. Start it again and this page will reconnect.</div>
+
+  <section class="card" id="codes-card">
+    <div class="card-head">
+      <h2>Latest codes</h2>
+      <button class="small quiet" id="clear-codes" hidden>Clear</button>
+    </div>
+    <div class="codes" id="codes"></div>
+    <div class="empty" id="codes-empty">
+      No codes yet. When a verification code arrives on your phone, it appears here and next to the
+      code box on the website you are signing in to.
+    </div>
+  </section>
+
+  <details class="card step" id="step-browser">
+    <summary>
+      <h2><span class="num" id="num-browser">1</span> Add the browser extension</h2>
+      <span class="state" id="state-browser">Not connected</span>
+    </summary>
+    <div class="step-body">
+      <p class="lead">The extension shows the code under the box on the website and fills it in when you click it.</p>
+      <div class="tabs" role="tablist" data-tabs="browser">
+        <button class="small" role="tab" data-tab="chromium" aria-selected="true">Chrome, Edge, Brave</button>
+        <button class="small" role="tab" data-tab="firefox" aria-selected="false">Firefox</button>
+        <button class="small" role="tab" data-tab="safari" aria-selected="false">Safari</button>
+      </div>
+      <div class="tab-panel" data-panel="chromium">
+        <ol class="steps">
+          <li>Open <code>chrome://extensions</code> in a new tab (in Edge: <code>edge://extensions</code>).</li>
+          <li>Turn on <strong>Developer mode</strong>.</li>
+          <li>Click <strong>Load unpacked</strong> and choose this folder:
+            <div class="copy-row"><code id="extension-path">the "extension" folder inside the OTP Bridge folder</code><button class="small" data-copy="#extension-path">Copy</button></div>
+          </li>
+          <li>Come back to this page. It connects by itself within a few seconds.</li>
+        </ol>
+        <p class="hint spaced">Keep that folder where it is: the browser loads the extension from it every time it starts.
+          Pages that were open before you added the extension need a reload before codes show up on them.</p>
+      </div>
+      <div class="tab-panel" data-panel="firefox" hidden>
+        <ol class="steps">
+          <li>Open <code>about:debugging#/runtime/this-firefox</code> in a new tab.</li>
+          <li>Click <strong>Load Temporary Add-on</strong> and choose the file <code>manifest.json</code> inside the extension folder.</li>
+          <li>Come back to this page. It connects by itself within a few seconds.</li>
+        </ol>
+        <p class="hint spaced">Firefox removes temporary add-ons when it closes, so this has to be repeated after restarting Firefox.</p>
+      </div>
+      <div class="tab-panel" data-panel="safari" hidden>
+        <p class="spaced">There is no Safari version. Safari on a Mac already fills in codes from an iPhone on its own, so use this for the other browsers.</p>
+      </div>
+      <div class="notice" id="browser-other" hidden></div>
+      <div class="field-line">
+        <span class="hint">Using a second browser? Open this page there with the private link, then add the extension in that browser too.</span>
+        <button class="small" id="copy-link">Copy private link</button>
+      </div>
+    </div>
+  </details>
+
+  <details class="card step" id="step-phone">
+    <summary>
+      <h2><span class="num" id="num-phone">2</span> Connect your phone</h2>
+      <span class="state" id="state-phone">Not set up</span>
+    </summary>
+    <div class="step-body">
+      <div class="notice" id="phone-stale" hidden></div>
+      <div class="pair">
+        <div class="qr-box">
+          <div class="qr" id="qr" aria-label="QR code with the address for your phone"></div>
+          <p class="hint">Scan with your phone's camera</p>
+        </div>
+        <div>
+          <p>Put your phone on the same Wi-Fi as this computer, then scan the code. The page that opens on the
+            phone walks you through the rest.</p>
+          <div class="field-line">
+            <label for="address-select">This computer's address</label>
+            <select id="address-select"></select>
+          </div>
+          <div class="copy-row"><code id="phone-url"></code><button class="small" data-copy="#phone-url">Copy</button></div>
+          <p class="hint spaced">Camera will not scan? Type or send that address to your phone and open it there.</p>
+          <div class="notice" id="no-network" hidden>This computer has no network address right now. Connect it to Wi-Fi first.</div>
+        </div>
+      </div>
+      <p class="hint spaced">
+        On an iPhone the phone sends matching messages with the Shortcuts app. On Android a message forwarding
+        app does it. Nothing is sent to the internet, and only messages that match your filter reach this computer.
+      </p>
+    </div>
+  </details>
+
+  <details class="card step" id="step-try">
+    <summary>
+      <h2><span class="num">3</span> Try it</h2>
+      <span class="state"></span>
+    </summary>
+    <div class="step-body">
+      <p class="lead">The practice page has a code box like the ones on real websites. Send yourself a test code and fill it in with one click.</p>
+      <div class="actions">
+        <a class="button primary" href="/demo" target="_blank" rel="noopener">Open the practice page</a>
+        <button id="send-test">Send a test code</button>
+        <span class="hint" id="test-result"></span>
+      </div>
+    </div>
+  </details>
+
+  <section class="card" id="settings-card">
+    <h2>Settings</h2>
+    <div class="settings">
+    <div class="setting" id="setting-autostart">
+      <input type="checkbox" id="opt-autostart">
+      <div class="grow">
+        <label class="label" for="opt-autostart">Start OTP Bridge when I log in</label>
+        <div class="desc" id="autostart-desc">Runs quietly in the background so codes always arrive.</div>
+      </div>
+    </div>
+    <div class="setting" id="setting-clipboard">
+      <input type="checkbox" id="opt-clipboard">
+      <div class="grow">
+        <label class="label" for="opt-clipboard">Also copy each new code to the clipboard</label>
+        <div class="desc" id="clipboard-desc">Useful for apps outside the browser: paste the code with Ctrl+V or Cmd+V. Replaces whatever was on the clipboard.</div>
+      </div>
+    </div>
+    <div class="setting">
+      <div class="grow">
+        <div class="label">Reset the phone link</div>
+        <div class="desc">Makes a new address. The old one stops working, so the phone has to be set up again.</div>
+      </div>
+      <button class="small danger" id="reset-phone">Reset</button>
+    </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Check a message</h2>
+    <p>Paste the text of an SMS to see which code OTP Bridge finds in it. Nothing is saved.</p>
+    <textarea id="check-text" class="spaced" placeholder="Your verification code is 482913" aria-label="Message text"></textarea>
+    <div class="actions">
+      <button id="check-run">Check</button>
+      <span id="check-out" role="status"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Activity</h2>
+    <ul class="activity" id="activity"></ul>
+    <p class="hint" id="activity-empty">Nothing has happened since OTP Bridge started.</p>
+  </section>
+
+  <footer class="foot">
+    <span id="version"></span> Codes stay in memory for 10 minutes and are never written to disk.
+  </footer>
+</div>
+<script src="/assets/qr.js"></script>
+<script src="/assets/dashboard.js"></script>
+</body>
+</html>

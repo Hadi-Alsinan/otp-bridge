@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Click-outside modal</title>
+<link rel="stylesheet" href="/fixture.css">
+</head>
+<body>
+<main><h1>Shop</h1><p>Page behind the modal.</p></main>
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet">
+    <h1>Two-step verification</h1>
+    <p>Enter the code from the text message.</p>
+    <input id="otp" name="sms_code" inputmode="numeric" maxlength="6">
+    <output id="state">open</output>
+  </div>
+</div>
+<script src="/outside.js"></script>
+</body>
+</html>
