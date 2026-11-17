@@ -1,0 +1,20 @@
+name: An idea
+description: Something OTP Bridge could do, or do better.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: Describe the situation, not only the feature. "I change Wi-Fi every day and have to set the phone up again" says more than "add a relay".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+  - type: textarea
+    id: promises
+    attributes:
+      label: Does it touch what OTP Bridge promises
+      description: The project promises that codes stay on your own devices, that nothing is sent to the internet, and that the companion and the extension need nothing installed besides Node.js. Say so if your idea changes one of these.

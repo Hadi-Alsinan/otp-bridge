@@ -3,6 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "description": "Fill in verification codes sent to your phone with one click, in any browser on Mac and Windows.",
+  "keywords": ["otp", "sms", "verification-code", "two-factor", "autofill", "browser-extension", "iphone", "android"],
+  "license": "MIT",
+  "author": "Hadi Alsinan",
+  "homepage": "https://github.com/Hadi-Alsinan/otp-bridge#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hadi-Alsinan/otp-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hadi-Alsinan/otp-bridge/issues"
+  },
   "bin": {
     "otp-bridge": "companion/cli.js"
   },
