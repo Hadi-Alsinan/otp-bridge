@@ -325,6 +325,11 @@ details.step > summary h2 { flex: 1; }
 ol.steps { margin: 10px 0 0; padding-left: 22px; }
 ol.steps li { margin: 6px 0; }
 ol.steps li::marker { color: var(--muted); font-weight: 600; }
+ol.steps .actions { margin: 8px 0 10px; }
+
+details.more { margin-top: 14px; font-size: 14px; }
+details.more > summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.more > .hint { margin-top: 8px; }
 
 .tabs { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
 .tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }

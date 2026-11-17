@@ -219,6 +219,28 @@ for (const [message, expected] of CASES) {
   });
 }
 
+test('the iPhone shortcut passes on every message a code can be found in', () => {
+  // The shortcut checks each text on the phone and sends only those that
+  // match its pattern. Anything the parser can read must get through.
+  const { SEND_IF_PATTERN } = require('../scripts/make-shortcut');
+  // The Shortcuts app's \d is a digit in any script; JavaScript spells that \p{Nd}.
+  const passedOn = new RegExp(SEND_IF_PATTERN.replace(/\\d/g, '\\p{Nd}'), 'u');
+  const extra = [
+    '@example.com #ABCDEF',                       // a code without a digit, named by its website
+    'رمز التحقق ٤٨٢٩١٣',                          // Arabic-Indic digits
+    'کد تایید شما ۴۸۲۹۱۳ است',                     // Persian digits
+    'Your code is ４８２９１３',                     // fullwidth digits
+  ];
+  let checked = 0;
+  for (const message of [...CASES.map(([m]) => m), ...extra]) {
+    if (!extractOtp(message)) continue;
+    checked += 1;
+    assert.ok(passedOn.test(message), `the shortcut would hold back: ${JSON.stringify(message)}`);
+  }
+  assert.ok(checked > 150, 'the samples were looked at');
+  assert.ok(!passedOn.test('See you at the usual place, bring the keys'), 'ordinary chat stays on the phone');
+});
+
 test('long, repetitive messages are handled quickly', () => {
   for (const unit of ['otp 1234 ', 'code 123456 ', '1234 otp ', 'رمز 1234 ', 'a.', '1.', 'code is ', 'http://a ', '@a.b #1234 ']) {
     const message = unit.repeat(Math.ceil(4000 / unit.length)).slice(0, 4000);

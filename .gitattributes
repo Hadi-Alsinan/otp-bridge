@@ -3,3 +3,4 @@
 # Windows batch files must keep their CRLF line endings exactly as stored.
 *.bat -text
 *.png binary
+*.shortcut binary

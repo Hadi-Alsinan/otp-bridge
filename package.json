@@ -10,7 +10,8 @@
     "start": "node companion/cli.js",
     "test": "node --test",
     "test:e2e": "node e2e/run.js",
-    "icons": "node scripts/make-icons.js"
+    "icons": "node scripts/make-icons.js",
+    "shortcut": "node scripts/make-shortcut.js"
   },
   "engines": {
     "node": ">=18"

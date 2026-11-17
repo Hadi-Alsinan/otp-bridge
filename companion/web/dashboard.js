@@ -195,7 +195,13 @@
     pill.textContent = label;
     pill.className = 'pill' + (phone.hostStale ? ' warn' : setUp ? ' ok' : '');
 
+    // Which address the phone sends to decides whether it survives a change of Wi-Fi.
+    var phoneHost = String(phone.host || '').replace(/:\d+$/, '');
+    var usesNumber = /^\d{1,3}(\.\d{1,3}){3}$/.test(phoneHost) && !/^127\./.test(phoneHost);
+    var usesName = /\.local$/.test(phoneHost);
+
     var stateText = setUp ? 'Set up' : 'Not set up';
+    if (setUp && usesNumber && !phone.hostStale) stateText += ' · this Wi-Fi only';
     if (setUp && phone.lastMessageAt) stateText += ' · last message ' + ago(phone.lastMessageAt);
     // The phone has opened its setup page but has not sent a real message yet.
     if (!setUp && phone.lastSeenAt) stateText = 'Phone reached this computer · finish the steps on the phone';
@@ -224,11 +230,28 @@
     if (phone.hostStale) {
       stale.hidden = false;
       stale.textContent = 'Your phone is set up to send codes to ' + phone.host + ', but this computer has a '
-        + 'different address on this network now. Scan the code again and paste the new address into the '
-        + 'automation on your phone. Choosing the address that ends in ".local" avoids this in future.';
+        + 'different address on this network now. Scan the code again with the phone and follow '
+        + '"Change the address" on the page that opens. If that page shows an address ending in ".local", '
+        + 'this will not happen again.';
     } else {
       stale.hidden = true;
     }
+
+    var advice = $('#phone-advice');
+    var adviceText = '';
+    if (setUp && !phone.hostStale && usesNumber) {
+      adviceText = 'Your phone sends codes to ' + phoneHost + ', this computer\'s number on the network it is on now. '
+        + 'The number changes when the computer joins a different Wi-Fi, and the phone then needs the new one.';
+      if ((state.network || {}).localUrl) {
+        adviceText += ' To set it up once: scan the code with the phone again. If the page shows an address '
+          + 'ending in ".local", follow "Change the address" there. That address stays the same on every Wi-Fi.';
+      }
+    } else if (setUp && usesName) {
+      adviceText = 'Your phone sends codes to ' + phoneHost + ', this computer\'s name. It stays the same on '
+        + 'every Wi-Fi, so the phone does not need setting up again.';
+    }
+    advice.hidden = !adviceText;
+    advice.textContent = adviceText;
 
     var choices = phoneChoices();
     var select = $('#address-select');

@@ -102,18 +102,33 @@ browser, and add the extension there too.
 ### 3. Connect your phone
 
 Scan the QR code on the dashboard with the phone's camera. The page that opens on the phone confirms
-that the phone can reach the computer, shows the address to paste, and lists the steps:
+that the phone can reach the computer, shows the address to paste, and lists the steps.
+
+The page picks the address. If the phone can reach the computer by its name, the address ends in
+`.local`. That address stays the same on every network, so the phone is set up once. If it cannot,
+the page shows the computer's current number, which has to be replaced when the computer joins a
+different Wi-Fi.
 
 **iPhone** (Shortcuts app)
 
-1. **Automation** tab, **+**, choose **Message**.
-2. **Message Contains**: type `code`. Choose **Run Immediately**. **Next**.
-3. **New Blank Automation**, add the action **Get Contents of URL**, and paste the address.
-4. Open the action's options: **Method** = **POST**, **Request Body** = **JSON**.
-5. **Add new field**, **Text**, key `message`, value **Shortcut Input**. **Done**.
+1. Tap **Add the shortcut**. It copies the address for you. Choose **Download** and open
+   **OTP Bridge** from Safari's downloads.
+2. The Shortcuts app asks for the address. Paste and tap **Add Shortcut**.
+3. **Automation** tab, **+**, choose **Message**.
+4. **Message Contains**: press the space bar once. Choose **Run Immediately**. **Next**.
+5. Pick **OTP Bridge** from the list of your shortcuts.
 
-The automation only runs for messages that contain the word you typed. Make one more for each
-word your codes use, for example `OTP`, `verification`, `passcode` or `رمز`.
+That one automation is enough. A single space makes it run for every text, and the shortcut then
+looks at the text on the phone and passes it on only if it has a number in it. A text without a
+number never leaves the phone, and the computer keeps a text only if it finds a code in it.
+
+A text with no space in it is not picked up. If your codes arrive like that, as some do in Chinese
+or Japanese, add one more automation and type a word those texts use, such as `验证码`, in place of
+the space.
+
+If the shortcut cannot be added, the phone page also lists the steps for building the automation
+by hand. Built by hand it does not look at the text first, so it uses a word such as `code` in
+place of the space, and needs one automation for each word your codes use.
 
 **Android**
 
@@ -181,8 +196,11 @@ phone has to be updated after changing it.
   the network can only reach the phone address, and only to drop a message in.
 - **The phone address is a secret.** Anyone on your network who knows it can send fake messages to
   your computer. They cannot read anything. If it leaks, click **Reset** on the dashboard.
+- **What the phone sends.** An iPhone passes on every text that has a number in it, not only the
+  ones with codes; a text without a number stays on the phone. An Android forwarding app passes on
+  whatever its rule says, usually every SMS.
 - **The phone talks to the computer in plain HTTP.** Someone who can listen in on your network
-  could see a code as it passes. Use this on networks you trust: at home, or on your own hotspot.
+  could see a text as it passes. Use this on networks you trust: at home, or on your own hotspot.
 - **What a website can see.** Nothing until you click. The suggestion is drawn in a way page scripts
   cannot read, it ignores clicks made by scripts, and it does not react to anything a page puts in
   its own code box, so a page cannot find the code by guessing. When a message names the website its
@@ -201,11 +219,13 @@ Windows, `~/.config/otp-bridge` on Linux.
 
 - The phone and the computer must be on the same network when the text arrives. Away from it, the
   phone's automation fails quietly and nothing reaches the computer.
-- If the router gives the computer a new address, the phone keeps sending to the old one. The
-  dashboard and the toolbar popup warn about this. Scanning the QR code again fixes it. The phone
-  page offers an address based on the computer's name where the network supports it, and that one
-  keeps working.
-- An iPhone only forwards messages that contain the words you set up.
+- The address with the computer's name (ending in `.local`) keeps working when the computer changes
+  Wi-Fi. Not every network or phone can use it, so the phone page only chooses it after the phone
+  has reached the computer by it. A phone set up with the computer's number keeps sending to the old
+  number after a change of Wi-Fi. The dashboard says which of the two the phone uses, and the
+  dashboard and the toolbar popup warn when the number has changed.
+- An iPhone does not pick up a text that has no space in it, such as a text that is only the code.
+  An automation built by hand only forwards messages that contain the words you set up.
 - Not every website's code box is recognised. The toolbar button and the right-click menu cover those.
 - In Firefox the extension has to be loaded again after each restart. There is no Safari version;
   Safari on a Mac already does this with an iPhone.
@@ -225,6 +245,7 @@ to GitHub; it has not had its first run yet.
 | Firefox | Not run. The extension is written to the cross-browser rules but has not been loaded in Firefox |
 | Windows and macOS | Not run. The start-at-login files and launch scripts are checked for correct content by tests, but have never been executed on a real PC or Mac |
 | iPhone and Android | Not run on a phone. The phone steps follow published guides for the Shortcuts automation and the forwarding apps; the companion is tested with the requests these send (JSON, form fields, plain text) |
+| The iPhone shortcut | Built and signed on a Mac with Apple's tool; tests check what it contains and that the companion serves it. Adding it on an iPhone has not been tried |
 
 ## If something does not work
 
@@ -233,15 +254,19 @@ network. On Windows, allow Node.js through the firewall for the kind of network 
 off any VPN on the phone or the computer and try again.
 
 **It worked and then stopped.** The computer probably has a new address. Look at the dashboard: it
-says so when it sees this. Scan the QR code again and paste the new address into the automation.
+says so when it sees this. Scan the QR code again with the phone and follow **Change the address**
+on the page that opens. If that page shows an address ending in `.local`, it will not change again.
 
 **The code arrives on the dashboard but not on the website.** Check that the dashboard says
 *Browser: connected*, and reload the website's tab. If the box is still not recognised, use the
 toolbar button.
 
 **Nothing arrives at all.** Look at *Activity* on the dashboard. If it shows no message, the phone
-did not send one: on an iPhone the text may not contain the word in your automation. If it shows a
-message without a code, paste the text into *Check a message* to see what was found.
+did not send one: on an iPhone the text may have no space or no number in it, or, in an automation
+built by hand, not contain the word you typed. If it shows a
+message without a code, paste the text into *Check a message* to see what was found. If it says the
+phone sent an empty message, the automation is not passing the text on: open it and set the
+shortcut's input to **Shortcut Input**.
 
 **Start at login does nothing on Windows.** Run `node companion\cli.js autostart on --visible`.
 
@@ -254,7 +279,7 @@ again, and click the reload button for OTP Bridge on the browser's extensions pa
 login is on, switch it off and on again so the background copy is replaced.
 
 To remove it, switch off start at login, run `node companion/cli.js stop`, remove the extension
-from the browser, delete the automation on the phone, and delete the settings folder.
+from the browser, delete the automation and the shortcut on the phone, and delete the settings folder.
 
 ## For developers
 
@@ -263,6 +288,7 @@ companion/cli.js          entry point
 companion/lib/            server, code parser, in-memory store, settings, start at login
 companion/web/            dashboard, phone setup page, practice page
 extension/                the browser extension (Manifest V3, no build step)
+scripts/                  builds the icons and the iPhone shortcut
 test/                     unit tests
 e2e/                      browser tests with Playwright
 ```
@@ -274,4 +300,5 @@ npm test            # unit tests, no install needed
 npm install         # only for the browser tests
 npx playwright install chromium
 npm run test:e2e
+npm run shortcut    # rebuild and sign the iPhone shortcut (needs a Mac signed in to iCloud)
 ```
