@@ -3,8 +3,10 @@ name: Tests
 # Runs the unit tests, the browser tests and the launch scripts on real
 # Windows, macOS and Linux machines.
 
+# A branch is built through its pull request, so each change is built once.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
