@@ -111,6 +111,8 @@ test('the phone can post a message in every common shape', async (t) => {
     { body: '', path: `${phonePath}?message=${encodeURIComponent('Your code is 100012')}`, code: '100012' },
     { body: { message: 'Your code is 100013' }, path: `${phonePath}/sms`, code: '100013' },
     { body: ['Your code is', '100014'], code: '100014' },
+    // Nested deeper than any known shape: the code is still found in what was sent.
+    { body: { a: { b: { c: { d: 'Your code is 100015' } } } }, code: '100015' },
   ];
 
   for (const shape of shapes) {
@@ -199,6 +201,34 @@ test('messages without a code are dropped and nothing of them is kept', async (t
   assert.ok(!state.text.includes('Lunch'));
 });
 
+test('a run of messages without a code is one line in the activity list', async (t) => {
+  const { app, port } = await start();
+  t.after(() => app.close());
+  const send = (message) => request(port, { method: 'POST', path: phonePath, body: { message } });
+  const activity = async () => (await request(port, { path: '/api/state', headers: bearer })).json.activity;
+
+  await send('See you at 5');
+  let list = await activity();
+  assert.equal(list[0].text, 'A message arrived from the phone, but there was no code in it.');
+  assert.deepEqual(Object.keys(list[0]).sort(), ['at', 'kind', 'text']);
+
+  await send('Flight QR 1154 leaves at 0940');
+  await send('Your parcel 88213 is on its way');
+  list = await activity();
+  assert.equal(list[0].text, '3 messages arrived from the phone, but there was no code in them.');
+  assert.equal(list.filter((a) => /no code/.test(a.text)).length, 1);
+
+  // Anything else in between starts a new run.
+  await send('Your Delta verification code is 778899');
+  await send('Meet at gate 12');
+  list = await activity();
+  assert.equal(list[0].text, 'A message arrived from the phone, but there was no code in it.');
+  assert.match(list[1].text, /Code received/);
+  assert.match(list[2].text, /^3 messages arrived/);
+  const state = await request(port, { path: '/api/state', headers: bearer });
+  assert.equal(state.json.phone.withoutCode, 4);
+});
+
 test('an empty or oversized message is refused', async (t) => {
   const { app, port } = await start();
   t.after(() => app.close());
@@ -207,6 +237,16 @@ test('an empty or oversized message is refused', async (t) => {
   assert.equal(empty.json.error, 'empty-message');
   const blank = await request(port, { method: 'POST', path: phonePath, body: { message: '   ' } });
   assert.equal(blank.status, 400);
+  // What the iPhone shortcut sends when the automation hands it no message.
+  for (const body of [{ message: '' }, { message: '', sender: ' ' }, {}, { message: null }, [], [[''], {}]]) {
+    const res = await request(port, { method: 'POST', path: phonePath, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+    assert.equal(res.status, 400, JSON.stringify(body));
+    assert.equal(res.json.error, 'empty-message', JSON.stringify(body));
+  }
+  const state = await request(port, { path: '/api/state', headers: bearer });
+  assert.equal(state.json.phone.received, 0, 'an empty message does not count as a message');
+  assert.equal(state.json.phone.setupAt, null, 'nor as the phone being set up');
+  assert.match(state.json.activity[0].text, /empty message.*Shortcut Input/);
   const huge = await request(port, { method: 'POST', path: phonePath, body: 'x'.repeat(70 * 1024) });
   assert.equal(huge.status, 413);
 });
@@ -239,6 +279,9 @@ test('the phone setup page, its details and its test button', async (t) => {
   assert.equal(info.json.port, port);
   assert.equal(typeof info.json.computerName, 'string');
   assert.ok(!info.text.includes(LOCAL_TOKEN));
+  // Opened on the computer itself: the number offered is one a phone could use, never 127.0.0.1.
+  if (lanAddress()) assert.match(info.json.address, /^(?!127\.)\d{1,3}(\.\d{1,3}){3}$/);
+  else assert.equal(info.json.address, null);
 
   const testPost = await request(port, { method: 'POST', path: `${phonePath}?test=1`, body: { message: 'Your OTP Bridge test code is 246810' } });
   assert.deepEqual(testPost.json, { ok: true, codeFound: true });
@@ -246,6 +289,27 @@ test('the phone setup page, its details and its test button', async (t) => {
   assert.equal(entry.code, '246810');
   assert.equal(entry.sender, 'OTP Bridge test');
   assert.equal(saved.length, 0, 'a test does not count as the phone being set up');
+});
+
+test('the phone page offers the iPhone shortcut as a download under its proper name', async (t) => {
+  const { app, port } = await start();
+  t.after(() => app.close());
+  const page = await request(port, { path: phonePath });
+  const link = /<a [^>]*id="add-shortcut"[^>]*href="([^"]+)"/.exec(page.text);
+  assert.ok(link, 'the page has the "Add the shortcut" button');
+
+  // The phone is another device on the network, so no token and no cookie.
+  const file = await request(port, { path: link[1] });
+  assert.equal(file.status, 200);
+  assert.equal(file.headers['content-type'], 'application/octet-stream');
+  // The Shortcuts app names the shortcut after the file.
+  assert.equal(file.headers['content-disposition'], 'attachment; filename="OTP Bridge.shortcut"');
+  assert.ok(file.text.startsWith('AEA1'), 'it is the signed file');
+  assert.equal(Number(file.headers['content-length']) > 1000, true);
+
+  // Other assets are still shown, not downloaded.
+  const script = await request(port, { path: '/assets/phone.js' });
+  assert.equal(script.headers['content-disposition'], undefined);
 });
 
 test('the first real message marks the phone as set up and remembers its address', async (t) => {
@@ -305,6 +369,8 @@ test('other devices on the network reach the phone link and nothing else', { ski
   const post = await request(port, { host: lan, method: 'POST', path: phonePath, body: { message: 'Your code is 864209' } });
   assert.deepEqual(post.json, { ok: true, codeFound: true });
   assert.equal((await request(port, { host: lan, path: '/assets/app.css' })).status, 200);
+  // The phone page shows the number the phone reached the computer on.
+  assert.equal((await request(port, { host: lan, path: `${phonePath}/info` })).json.address, lan);
 
   // The right token and a spoofed Host header are still not enough from outside.
   for (const path of ['/api/state', '/api/codes', '/', '/demo', `/?k=${LOCAL_TOKEN}`]) {

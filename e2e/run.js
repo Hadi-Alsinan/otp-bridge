@@ -830,8 +830,10 @@ function startFixtureServer() {
     const phone = await context.newPage();
     await phone.setViewportSize({ width: 390, height: 844 });
     await phone.goto(`${base}/p/${config.phoneToken}`);
-    await phone.waitForFunction(() => document.querySelector('#hook-url').textContent.length > 10);
-    assert.equal(await phone.textContent('#hook-url'), `${base}/p/${config.phoneToken}`);
+    // Opened on the computer itself, the page shows the address a phone would use, not 127.0.0.1.
+    const info = await (await fetch(`${base}/p/${config.phoneToken}/info`)).json();
+    const shown = info.address ? `http://${info.address}:${port}/p/${config.phoneToken}` : `${base}/p/${config.phoneToken}`;
+    await phone.waitForFunction((want) => document.querySelector('#hook-url').textContent === want, shown);
     await phone.click('#send-test');
     await phone.waitForFunction(() => /Sent \d{3} \d{3}/.test(document.querySelector('#test-out').textContent));
     await phone.screenshot({ path: path.join(OUTPUT, 'phone-page.png'), fullPage: true });

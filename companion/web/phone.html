@@ -43,27 +43,67 @@
 
     <div class="tab-panel" data-panel="iphone">
       <ol class="steps">
-        <li>Tap <strong>Copy</strong> above.</li>
-        <li>Open the <strong>Shortcuts</strong> app and go to the <strong>Automation</strong> tab.</li>
-        <li>Tap <strong>+</strong> (or <strong>New Automation</strong>) and choose <strong>Message</strong>.</li>
-        <li>Tap <strong>Message Contains</strong>, type <code>code</code>, then tap <strong>Done</strong>.</li>
+        <li>Tap <strong>Add the shortcut</strong>. The address is copied for you. Choose <strong>Download</strong>,
+          then open <strong>OTP Bridge</strong> from Safari's downloads. It opens in the Shortcuts app.
+          <div class="actions">
+            <a class="button primary" id="add-shortcut" href="/assets/otp-bridge.shortcut">Add the shortcut</a>
+            <span class="hint" id="shortcut-out" role="status"></span>
+          </div>
+        </li>
+        <li>When it asks for the address, paste, then tap <strong>Add Shortcut</strong>.</li>
+        <li>In the Shortcuts app, go to the <strong>Automation</strong> tab, tap <strong>+</strong>
+          (or <strong>New Automation</strong>) and choose <strong>Message</strong>.</li>
+        <li>Tap <strong>Message Contains</strong>, press the <strong>space bar once</strong>, then tap
+          <strong>Done</strong>. A single space makes the automation run for every text.</li>
         <li>Choose <strong>Run Immediately</strong>, then tap <strong>Next</strong>.</li>
-        <li>Tap <strong>New Blank Automation</strong>, search for <strong>Get Contents of URL</strong> and add it.</li>
-        <li>Tap the address field of that action and paste.</li>
-        <li>Tap the small arrow next to the address to show more options. Set <strong>Method</strong> to
-          <strong>POST</strong> and <strong>Request Body</strong> to <strong>JSON</strong>.</li>
-        <li>Tap <strong>Add new field</strong>, choose <strong>Text</strong>, and type <code>message</code> as the key.
-          Tap the value next to it and pick <strong>Shortcut Input</strong> from the bar above the keyboard.</li>
-        <li>Tap <strong>Done</strong>.</li>
+        <li>Pick <strong>OTP Bridge</strong> from the list of your shortcuts.</li>
       </ol>
       <p class="hint spaced">
-        The automation only fires for messages that contain the word you typed. Codes that use other words
-        need their own automation: repeat the steps with <code>OTP</code>, <code>verification</code>,
-        <code>passcode</code> or <code>رمز</code>, whichever your banks and apps use.
+        That is the only automation you need. The shortcut looks at each text on the phone and passes it on
+        only if it has a number in it. Your computer then keeps it only if it finds a code. A text without a
+        number never leaves the phone.
+      </p>
+      <p class="hint spaced">
+        A text with no space in it is not picked up. If your codes arrive like that, as some do in Chinese or
+        Japanese, add one more automation and type a word those texts use, such as <code>验证码</code>, in
+        place of the space.
       </p>
       <p class="hint spaced">
         The first time it runs, iOS may ask whether Shortcuts can find devices on your local network. Choose Allow.
       </p>
+      <details class="more">
+        <summary>Set it up by hand instead</summary>
+        <p class="hint">Use this if the shortcut cannot be added. Tap <strong>Copy</strong> at the top of this
+          page and do steps 3 to 5 above, but in step 4 type the word <code>code</code> in place of the space.
+          An automation built by hand does not look at the text first, so a space would pass on every text
+          you receive. Then:</p>
+        <ol class="steps">
+          <li>Tap <strong>New Blank Automation</strong>, search for <strong>Get Contents of URL</strong> and add it.</li>
+          <li>Tap the address field of that action and paste.</li>
+          <li>Tap the small arrow next to the address to show more options. Set <strong>Method</strong> to
+            <strong>POST</strong> and <strong>Request Body</strong> to <strong>JSON</strong>.</li>
+          <li>Tap <strong>Add new field</strong>, choose <strong>Text</strong>, and type <code>message</code> as the key.
+            Tap the value next to it and pick <strong>Shortcut Input</strong> from the bar above the keyboard.</li>
+          <li>Tap <strong>Done</strong>.</li>
+        </ol>
+        <p class="hint">Codes that use other words need their own automation: do this again with
+          <code>OTP</code>, <code>verification</code>, <code>passcode</code> or <code>رمز</code>, whichever
+          your banks and apps use.</p>
+      </details>
+      <details class="more">
+        <summary>Already set up? Change the address</summary>
+        <p class="hint">Use this when the address at the top of this page is not the one your phone has now,
+          for example after the computer says its address has changed.</p>
+        <ol class="steps">
+          <li>Tap <strong>Copy</strong> at the top of this page.</li>
+          <li>Open the <strong>Shortcuts</strong> app and find <strong>OTP Bridge</strong> among your shortcuts.
+            Tap the three dots on it, or touch and hold it and choose <strong>Edit</strong>.</li>
+          <li>In the box named <strong>Text</strong>, delete the old address and paste.</li>
+          <li>Tap <strong>Done</strong>. The automations stay as they are.</li>
+        </ol>
+        <p class="hint">If you built the automation by hand, open it in the <strong>Automation</strong> tab and
+          replace the address in <strong>Get Contents of URL</strong>.</p>
+      </details>
     </div>
 
     <div class="tab-panel" data-panel="android" hidden>
@@ -87,6 +127,11 @@
       <p class="hint spaced">
         OTP Bridge keeps only messages that contain a verification code. Everything else is dropped the moment it arrives.
       </p>
+      <details class="more">
+        <summary>Already set up? Change the address</summary>
+        <p class="hint">Tap <strong>Copy</strong> at the top of this page, open the forwarding app, and paste the
+          address over the old URL in your rule.</p>
+      </details>
     </div>
   </section>
 

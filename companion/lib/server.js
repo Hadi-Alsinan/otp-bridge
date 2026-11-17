@@ -26,6 +26,14 @@ const ASSETS = {
   'demo.js': 'text/javascript; charset=utf-8',
   'qr.js': 'text/javascript; charset=utf-8',
   'icon.svg': 'image/svg+xml',
+  // The iPhone shortcut, built and signed by scripts/make-shortcut.js.
+  'otp-bridge.shortcut': 'application/octet-stream',
+};
+
+// Assets that are saved rather than shown. The Shortcuts app names the
+// shortcut after the file, so the phone has to receive it under this name.
+const DOWNLOAD_NAMES = {
+  'otp-bridge.shortcut': 'OTP Bridge.shortcut',
 };
 
 const TEXT_FIELDS = ['message', 'text', 'body', 'content', 'sms', 'msg', 'smsbody', 'messagebody',
@@ -145,6 +153,15 @@ function pickFields(obj, depth = 0) {
   return { text, sender };
 }
 
+/** Whether parsed JSON holds any text or number at all, however it is nested. */
+function carriesText(value, depth = 0) {
+  if (typeof value === 'string') return value.trim() !== '';
+  if (typeof value === 'number') return true;
+  if (depth > 20) return true;
+  if (value && typeof value === 'object') return Object.values(value).some((v) => carriesText(v, depth + 1));
+  return false;
+}
+
 function parseMultipart(buffer, contentType) {
   const match = /boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(contentType);
   if (!match) return null;
@@ -169,6 +186,7 @@ function parseIncomingMessage(buffer, contentType, searchParams) {
   const type = String(contentType || '').toLowerCase();
   const raw = buffer.toString('utf8');
   let found = { text: null, sender: null };
+  let blankJson = false;
 
   if (type.includes('json') || /^\s*[[{"]/.test(raw)) {
     try {
@@ -176,6 +194,9 @@ function parseIncomingMessage(buffer, contentType, searchParams) {
       if (typeof value === 'string') found.text = value;
       else if (Array.isArray(value)) found.text = stringify(value);
       else if (value && typeof value === 'object') found = pickFields(value);
+      // {"message": ""} is an empty message, not a message that reads '{"message": ""}'.
+      // The iPhone shortcut sends exactly that when the automation hands it nothing.
+      blankJson = value !== null && typeof value === 'object' && !carriesText(value);
     } catch {
       // not JSON after all; treated as plain text below
     }
@@ -187,7 +208,7 @@ function parseIncomingMessage(buffer, contentType, searchParams) {
   if (found.text == null && type.includes('x-www-form-urlencoded')) {
     found = pickFields(Object.fromEntries(new URLSearchParams(raw)));
   }
-  if (found.text == null && raw.trim() && !type.includes('multipart/form-data')) {
+  if (found.text == null && raw.trim() && !blankJson && !type.includes('multipart/form-data')) {
     found.text = raw;
   }
   if (searchParams) {
@@ -251,6 +272,24 @@ function createCompanion(options) {
     state.activity.unshift({ at: now(), kind, text });
     if (state.activity.length > 30) state.activity.length = 30;
     log(text);
+  }
+
+  /**
+   * Like note(), for something that happens many times in a row: the run is
+   * one line with a count, and is written to the log once.
+   * @param {(count: number) => string} wording
+   */
+  function noteRepeated(kind, key, wording) {
+    const latest = state.activity[0];
+    if (latest && latest.key === key) {
+      latest.count += 1;
+      latest.at = now();
+      latest.text = wording(latest.count);
+      return;
+    }
+    state.activity.unshift({ at: now(), kind, text: wording(1), key, count: 1 });
+    if (state.activity.length > 30) state.activity.length = 30;
+    log(wording(1));
   }
 
   // --- responses -----------------------------------------------------------
@@ -366,6 +405,16 @@ function createCompanion(options) {
     return value;
   }
 
+  /**
+   * The number a phone should send to. That is the address this request
+   * arrived on; when the page is opened on the computer itself, the best guess.
+   */
+  function phoneFacingAddress(req, addresses) {
+    const reached = String(req.socket.localAddress || '').replace(/^::ffff:/i, '');
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(reached) && !netinfo.isLoopbackAddress(reached)) return reached;
+    return addresses.length ? addresses[0].address : null;
+  }
+
   // --- messages from the phone ---------------------------------------------
 
   /** Remembers that the phone is set up, and which address it sends to. */
@@ -417,6 +466,7 @@ function createCompanion(options) {
           version,
           computerName: netinfo.computerName(),
           port: boundPort,
+          address: phoneFacingAddress(req, net.addresses),
           localHostname: net.localHostname,
         });
         return;
@@ -431,7 +481,7 @@ function createCompanion(options) {
     const body = await readBody(req);
     const { text, sender } = parseIncomingMessage(body, req.headers['content-type'], url.searchParams);
     if (!text) {
-      note('warn', 'The phone sent an empty message. Check that the message text is included in the request.');
+      note('warn', 'The phone sent an empty message. In the automation on the phone, the message has to be passed on as Shortcut Input.');
       throw new HttpError(400, 'empty-message');
     }
     // The "send a test code" button on the phone's setup page.
@@ -452,7 +502,10 @@ function createCompanion(options) {
       if (!outcome.duplicate) note('code', 'Code received from the phone.');
     } else {
       state.phone.withoutCode += 1;
-      note('info', 'A message arrived from the phone, but there was no code in it.');
+      // An iPhone passes on every text with a number in it, so these come in runs.
+      noteRepeated('info', 'no-code', (count) => (count === 1
+        ? 'A message arrived from the phone, but there was no code in it.'
+        : `${count} messages arrived from the phone, but there was no code in them.`));
     }
     // The code is never echoed back to the sender.
     sendJson(res, 200, { ok: true, codeFound: outcome.codeFound });
@@ -506,7 +559,7 @@ function createCompanion(options) {
       autostart: autostart ? safeAutostartStatus() : { supported: false },
       rev: store.rev,
       codes: store.list().map(publicCode),
-      activity: state.activity.slice(0, 12),
+      activity: state.activity.slice(0, 12).map(({ at, kind, text }) => ({ at, kind, text })),
     };
   }
 
@@ -690,7 +743,11 @@ function createCompanion(options) {
     const type = Object.prototype.hasOwnProperty.call(ASSETS, name) ? ASSETS[name] : null;
     if (!type) throw new HttpError(404, 'not-found');
     const body = fs.readFileSync(path.join(webDir, name));
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length });
+    const headers = { 'Content-Type': type, 'Content-Length': body.length };
+    if (Object.prototype.hasOwnProperty.call(DOWNLOAD_NAMES, name)) {
+      headers['Content-Disposition'] = `attachment; filename="${DOWNLOAD_NAMES[name]}"`;
+    }
+    res.writeHead(200, headers);
     res.end(req.method === 'HEAD' ? undefined : body);
   }
 
