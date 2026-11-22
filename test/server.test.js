@@ -229,6 +229,65 @@ test('a run of messages without a code is one line in the activity list', async 
   assert.equal(state.json.phone.withoutCode, 4);
 });
 
+test('mail read by the browser extension becomes a code that names its sender', async (t) => {
+  const { app, port } = await start();
+  t.after(() => app.close());
+  const post = (messages, headers = bearer) => request(port, { method: 'POST', path: '/api/mail', headers, body: { messages } });
+
+  const answer = await post([
+    { from: 'GitHub', text: 'Your sign-in code\nUse 482913 to sign in. It is valid for 10 minutes.' },
+    { from: 'A newsletter', text: 'What we shipped in 2026\nA look back at the year.' },
+    { from: 'Nobody', text: '   ' },
+    'not a message',
+  ]);
+  assert.equal(answer.status, 200);
+  assert.deepEqual(answer.json, { ok: true, codes: 1 });
+
+  const state = (await request(port, { path: '/api/state', headers: bearer })).json;
+  assert.equal(state.codes.length, 1);
+  assert.equal(state.codes[0].code, '482913');
+  assert.equal(state.codes[0].sender, 'GitHub (Gmail)');
+  // Most mail has no code in it; only the code is worth a line.
+  assert.deepEqual(state.activity.map((a) => a.text).filter((text) => /code/i.test(text)), ['Code received from Gmail.']);
+  assert.equal(state.phone.received, 0, 'mail is not counted as coming from the phone');
+
+  // A message with no name on it, and the same code again.
+  assert.deepEqual((await post([{ text: 'Your Northwind code is 482913' }])).json, { ok: true, codes: 1 });
+  assert.deepEqual((await post([{ text: 'Your Northwind code is 771204' }])).json, { ok: true, codes: 1 });
+  const codes = (await request(port, { path: '/api/codes', headers: bearer })).json.codes;
+  assert.deepEqual(codes.map((c) => [c.code, c.sender]), [['771204', 'Gmail'], ['482913', 'GitHub (Gmail)']]);
+
+  assert.deepEqual((await post(undefined)).json, { ok: true, codes: 0 });
+  assert.equal((await post([{ text: 'Your code is 111111' }], {})).status, 401, 'not without the token');
+});
+
+test('mail the extension could not read a code from safely is reported, with the reason', async (t) => {
+  const logged = [];
+  const { app, port } = await start({ options: { log: (line) => logged.push(line) } });
+  t.after(() => app.close());
+  const answer = await request(port, {
+    method: 'POST',
+    path: '/api/mail',
+    headers: bearer,
+    body: { messages: [], skipped: [{ from: 'noreply', reason: 'older' }, { reason: 'early' }, 'nonsense', { from: 'noreply', reason: 'changed' }] },
+  });
+  assert.deepEqual(answer.json, { ok: true, codes: 0 });
+  const state = (await request(port, { path: '/api/state', headers: bearer })).json;
+  assert.equal(state.codes.length, 0);
+  const lines = state.activity.map((a) => a.text).reverse();
+  assert.equal(lines[0], 'An email from noreply joined a Gmail conversation that has an older unread email in it. '
+    + "Gmail shows the older email's first lines there, so no code was read from it.");
+  assert.equal(lines[1], 'An email was already in Gmail before OTP Bridge began watching. '
+    + 'It cannot tell whether Gmail shows this email or an older one, so no code was read from it.');
+  assert.match(lines[2], /^An email joined a Gmail conversation/);
+  assert.equal(lines[3], 'Gmail now shows other first lines for a conversation with noreply, and no new email arrived. '
+    + 'OTP Bridge cannot tell which email they are from, so no code was read from them.');
+
+  // The log can be a file on disk. It gets the same lines without the sender's name.
+  assert.equal(logged.filter((line) => /no code was read/.test(line)).length, 4);
+  assert.deepEqual(logged.filter((line) => /noreply/.test(line)), []);
+});
+
 test('an empty or oversized message is refused', async (t) => {
   const { app, port } = await start();
   t.after(() => app.close());

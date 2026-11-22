@@ -5,12 +5,19 @@
  * http://127.0.0.1:<port>, using the token it was paired with. Pages never get
  * the token; content scripts ask this script for codes instead.
  *
- * It keeps no state in memory between messages, so it does not matter that
- * the browser stops and restarts it whenever it likes.
+ * The browser stops and restarts it whenever it likes. Codes and the pairing
+ * are not kept in memory, so that does not matter for them. What it remembers
+ * of the mailbox between looks is lost in a restart, and mail that arrives
+ * around one is left alone (see mail.js).
  */
 'use strict';
 
 const api = globalThis.browser ?? globalThis.chrome;
+
+// Chromium runs this file alone and loads the rest here; Firefox loads both
+// from the manifest.
+if (typeof importScripts === 'function') importScripts('mail.js');
+const Mail = globalThis.OtpBridgeMail;
 
 const VERSION = api.runtime.getManifest().version;
 const BROWSER = /Firefox\//.test(navigator.userAgent) ? 'firefox'
@@ -135,7 +142,15 @@ async function handlePoll(message) {
   if (!pairing) return { ok: false, error: 'unpaired' };
   const rev = Number(message.rev) || 0;
   const wait = Math.max(0, Math.min(20, Number(message.wait) || 0));
-  const answer = await call(pairing, `/api/codes?rev=${rev}&wait=${wait}`, { timeoutMs: (wait + 6) * 1000 });
+  // A page asks only while it shows a code field, so this is when a code in
+  // the mailbox is worth looking for. The companion answers as soon as it has one.
+  const stopWatching = watchMail(pairing);
+  let answer;
+  try {
+    answer = await call(pairing, `/api/codes?rev=${rev}&wait=${wait}`, { timeoutMs: (wait + 6) * 1000 });
+  } finally {
+    stopWatching();
+  }
   if (!answer.ok) return { ok: false, error: answer.error || 'offline' };
   const codes = (answer.codes || [])
     .filter((entry) => !entry.usedAt && answer.now - entry.receivedAt < FRESH_MS)
@@ -171,6 +186,171 @@ async function handleStatus() {
   };
 }
 
+// --- codes that arrive by email ---------------------------------------------------
+//
+// Gmail gives a browser that is signed in to it a list of its unread mail. With
+// the user's say-so (a switch in the popup), that list is read while a page
+// waits for a code, and what is new in it goes to the companion on this
+// computer, which finds the code. Nothing of the mail is stored here: only
+// which entries were listed, when, and a mark that stands for their words.
+
+const MAIL_ORIGIN = 'https://mail.google.com';
+const MAIL_ACCESS = { origins: [`${MAIL_ORIGIN}/*`] };
+const MAIL_MAX_ACCOUNTS = 4;               // Google accounts signed in side by side
+const MAIL_QUICK_MS = 4000;                // how often to look while a code is expected
+const MAIL_QUICK_FOR_MS = 3 * 60 * 1000;   // after this long without a break, look less often
+const MAIL_SLOW_MS = 15000;
+const MAIL_SEEN_MAX = 2000;                // entries remembered: an earlier email is only recognised while it is one of them
+
+let mailLook = null;         // the look in progress; pages that wait together share it
+let mailLookedAt = 0;
+let mailWantedAt = 0;        // when a page last waited for a code
+let mailWaitingSince = 0;    // when the current stretch of waiting began
+let mailAccounts = { count: MAIL_MAX_ACCOUNTS, at: 0 };
+const mailPrevious = new Map();   // account -> what its list looked like at the last look
+
+async function mailSwitchedOn() {
+  const { mail } = await api.storage.local.get('mail');
+  return !!mail && mail.on === true;
+}
+
+async function mailAllowed() {
+  try {
+    return !!api.permissions && await api.permissions.contains(MAIL_ACCESS);
+  } catch {
+    return false;
+  }
+}
+
+/** One signed-in account's unread mail, or what went wrong. */
+async function readMailbox(index) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${MAIL_ORIGIN}/mail/u/${index}/feed/atom`, {
+      credentials: 'include',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    if (response.status === 401 || response.status === 403) return { problem: 'signed-out' };
+    if (!response.ok) return { problem: 'unreadable' };
+    const feed = Mail.parseFeed(await response.text());
+    if (!feed) return { problem: 'signed-out' };   // a sign-in page came back instead
+    // Gmail's own clock decides what is recent, so a wrong clock here does not matter.
+    return { feed, now: Date.parse(response.headers.get('date') || '') || Date.now() };
+  } catch {
+    return { problem: 'unreachable' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readMail() {
+  const known = Date.now() - mailAccounts.at < 5 * 60 * 1000;
+  const limit = known ? mailAccounts.count : MAIL_MAX_ACCOUNTS;
+  const boxes = [];
+  let problem = null;
+  for (let index = 0; index < limit; index += 1) {
+    const box = await readMailbox(index);
+    if (box.problem) {
+      if (index === 0) problem = box.problem;
+      break;
+    }
+    // A number past the last account can show an earlier account again.
+    const account = box.feed.account;
+    if (index > 0 && (!account || boxes.some((other) => other.feed.account === account))) break;
+    boxes.push(box);
+  }
+  if (!known && boxes.length) mailAccounts = { count: boxes.length, at: Date.now() };
+  return { boxes, problem };
+}
+
+/** One look at the mailbox. Null when the user has it switched off. */
+async function lookAtMail(pairing) {
+  // Asked every time: the switch can be turned off while a page is still waiting.
+  if (!await mailSwitchedOn() || !await mailAllowed()) return null;
+  const { boxes, problem } = await readMail();
+  const { mailSeen } = await api.storage.local.get('mailSeen');
+  const known = Array.isArray(mailSeen) ? mailSeen.filter((note) => note && typeof note === 'object') : [];
+  const fresh = [];
+  const skipped = [];
+  const notes = [];
+  const looks = [];
+  boxes.forEach((box, index) => {
+    const key = box.feed.account || `#${index}`;
+    const sorted = Mail.sortMail(box.feed, { now: box.now, maxAgeMs: FRESH_MS, known, previous: mailPrevious.get(key) });
+    fresh.push(...sorted.fresh);
+    skipped.push(...sorted.skipped);
+    notes.push(...sorted.notes);
+    looks.push([key, sorted.look]);
+  });
+  if ((fresh.length || skipped.length) && pairing) {
+    const answer = await call(pairing, '/api/mail', {
+      method: 'POST',
+      body: {
+        messages: fresh.map(({ from, text }) => ({ from, text })),
+        // Mail whose code could not be read safely. The companion says why on the dashboard.
+        skipped: skipped.map(({ from, reason }) => ({ from, reason })),
+      },
+    });
+    // Not handed over (the companion is not running): nothing is remembered,
+    // so the next look sees the same mail against the same earlier look.
+    if (answer.ok !== true) return { accounts: boxes.map((box) => box.feed.account).filter(Boolean), problem };
+  }
+  // Everything listed is remembered: an entry is not looked at twice, its
+  // words are known the next time, and this look is what the next is compared with.
+  for (const [key, look] of looks) mailPrevious.set(key, look);
+  const same = (x, y) => x.id === y.id && x.at === y.at && x.mark === y.mark;
+  if (notes.some((note) => !known.some((old) => same(old, note)))) {
+    const merged = [...known.filter((old) => !notes.some((note) => same(old, note))), ...notes];
+    await api.storage.local.set({ mailSeen: merged.slice(-MAIL_SEEN_MAX) });
+  }
+  return { accounts: boxes.map((box) => box.feed.account).filter(Boolean), problem };
+}
+
+function startLook(pairing) {
+  if (!mailLook) {
+    mailLookedAt = Date.now();
+    mailLook = lookAtMail(pairing)
+      .catch(() => ({ accounts: [], problem: 'unreachable' }))
+      .finally(() => { mailLook = null; });
+  }
+  return mailLook;
+}
+
+/** Looks again if it is time. Every page that waits calls this once a second. */
+function lookIfDue(pairing) {
+  const now = Date.now();
+  if (now - mailWantedAt > 30000) mailWaitingSince = now;   // nobody was waiting: a new stretch begins
+  mailWantedAt = now;
+  const every = now - mailWaitingSince < MAIL_QUICK_FOR_MS ? MAIL_QUICK_MS : MAIL_SLOW_MS;
+  if (!mailLook && now - mailLookedAt >= every) startLook(pairing);
+}
+
+/** Watches the mailbox for as long as a page waits for a code. Returns the way to stop. */
+function watchMail(pairing) {
+  lookIfDue(pairing);
+  const timer = setInterval(() => lookIfDue(pairing), 1000);
+  return () => clearInterval(timer);
+}
+
+/** For the popup: is it on, and does Gmail answer right now? */
+async function handleMailStatus() {
+  // Asked first: a look that began before the switch was turned off must not answer "on".
+  if (!await mailSwitchedOn() || !await mailAllowed()) return { ok: true, on: false };
+  const look = await startLook(await getPairing());
+  return look ? { ok: true, on: true, ...look } : { ok: true, on: false };
+}
+
+async function handleMailSet(message) {
+  await api.storage.local.set({ mail: { on: message.on === true } });
+  if (message.on !== true) {
+    mailAccounts = { count: MAIL_MAX_ACCOUNTS, at: 0 };
+    mailPrevious.clear();
+  }
+  return { ok: true };
+}
+
 // --- messages -----------------------------------------------------------------
 
 function isOwnPage(sender) {
@@ -187,6 +367,8 @@ async function handleMessage(message, sender) {
     // From the extension's own popup only.
     case 'status': return isOwnPage(sender) ? handleStatus() : { ok: false };
     case 'pair-link': return isOwnPage(sender) ? handlePairLink(message) : { ok: false };
+    case 'mail-status': return isOwnPage(sender) ? handleMailStatus() : { ok: false };
+    case 'mail-set': return isOwnPage(sender) ? handleMailSet(message) : { ok: false };
     case 'unpair':
       if (!isOwnPage(sender)) return { ok: false };
       await api.storage.local.remove('pairing');

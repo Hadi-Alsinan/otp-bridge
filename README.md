@@ -14,6 +14,9 @@ a Mac, with an iPhone or an Android phone.
 
 It is the "AutoFill from iPhone" that Safari has, rebuilt so that it does not need Safari or a Mac.
 
+Codes that arrive by email in Gmail can be offered the same way. That part needs no phone: one
+switch in the extension, turned on once.
+
 ## Which phone with which computer
 
 Any phone with any computer. The phone only has to send a small web request to the computer, so the
@@ -48,8 +51,12 @@ There are three parts:
 3. **The browser extension** (`extension/`) notices code boxes on websites, asks the companion
    whether a code has arrived, and offers it.
 
-Nothing goes over the internet and there is no account. The phone talks to the computer directly
-on your own network.
+There is no account and no server in between. The phone talks to the computer directly on your own
+network.
+
+Codes from Gmail take a shorter road. While a page shows a code box, the extension asks Gmail for
+your unread mail, using the sign-in your browser already has, and hands what is new to the
+companion on the same computer. See [Codes from Gmail](#5-codes-from-gmail).
 
 ## What you need
 
@@ -167,7 +174,51 @@ appears under the box. Click it.
 
 ![The suggestion under a code box](docs/suggestion.png)
 
-### 5. Let it start by itself
+### 5. Codes from Gmail
+
+This step is optional, and it does not need the phone.
+
+1. Be signed in to Gmail in the browser that has the extension.
+2. Click the OTP Bridge button in the browser toolbar and switch on **Codes from Gmail**.
+3. The browser asks whether OTP Bridge may read mail.google.com. Allow it.
+
+From then on, when a website emails you a code, it appears under the code box a few seconds after
+the email arrives, marked with who sent it. If several Google accounts are signed in to the
+browser, up to four of them are read.
+
+The extension reads what Gmail lists for unread mail in the inbox: the sender, the subject and the
+first line or two. So a code is found when it is in the subject or near the top of the email, which
+is where most services put it. An email that you have already opened, on the phone for example, is
+no longer unread and is not seen.
+
+**It does not work every time.** Gmail lists conversations, not single emails, and it often puts
+emails with the same subject from the same sender into one conversation. For a conversation, the
+list shows the first lines of the oldest email that is still unread. So when a new code joins a
+conversation in which an earlier code was never opened, the list shows the earlier code. The
+extension cannot see the new one there. It reads nothing, and the dashboard's activity list says
+so. In practice:
+
+- A service that puts the code in the subject (`482913 is your code`) starts a new conversation
+  every time, and its codes are found.
+- A service that sends every code under the same subject (`Your sign-in code`) works when Gmail
+  starts a new conversation for the email, or when the earlier emails of the conversation have been
+  opened. Otherwise the code has to be read from the email.
+- The page with the code box has to be open and in front before the email arrives. The extension
+  compares Gmail's list before and after, and does not trust an email that was already there.
+
+**It can offer an older code, in two cases.** Gmail's list gives no way to tell them from a new
+code:
+
+- An earlier email of the same conversation was archived, or moved out of the inbox in another
+  way, without being opened. Gmail then lists the new email as a new conversation and still shows
+  the earlier email's first lines. OTP Bridge offers the earlier code, unless that earlier email
+  is among the last 2,000 it has seen in Gmail's list.
+- Two emails of the same conversation arrive within a few seconds of each other. The first one's
+  code is offered, and the second is not seen.
+
+If a website refuses a code that came from Gmail, read the code from the email.
+
+### 6. Let it start by itself
 
 On the dashboard, switch on **Start OTP Bridge when I log in**. From then on it runs quietly in the
 background and you do not need the terminal window.
@@ -213,6 +264,14 @@ phone has to be updated after changing it.
   the network can only reach the phone address, and only to drop a message in.
 - **The phone address is a secret.** Anyone on your network who knows it can send fake messages to
   your computer. They cannot read anything. If it leaks, click **Reset** on the dashboard.
+- **What is read in Gmail.** Nothing, unless you switch on **Codes from Gmail**. Then the extension
+  asks Gmail for the list of your unread mail while a page shows a code box, and once when you open
+  its window from the toolbar: sender, subject and the first line or two of each. An email that arrives while it watches, and has a digit in it, is
+  handed to the companion on this computer, which keeps it only if it finds a code. Of an email it
+  cannot read a code from safely, only the sender's name goes to the companion, for the activity
+  list. Nothing else is read, nothing is marked as read, and no password is stored: the browser's
+  own sign-in is used. The extension remembers which entries it has seen, as numbers and not as
+  text. Turning the switch off hands the access back.
 - **What the phone sends.** An iPhone passes on every text that has a number in it, not only the
   ones with codes; a text without a number stays on the phone. An Android forwarding app passes on
   whatever its rule says, usually every SMS.
@@ -243,6 +302,11 @@ Windows, `~/.config/otp-bridge` on Linux.
   dashboard and the toolbar popup warn when the number has changed.
 - An iPhone does not pick up a text that has no space in it, such as a text that is only the code.
   An automation built by hand only forwards messages that contain the words you set up.
+- Codes from Gmail are read from the short preview Gmail gives of each unread conversation. A code
+  further down a long email is not found, and neither is one in mail that skips the inbox. A new
+  email in a conversation that has an older unread email in it is not read either; see
+  [Codes from Gmail](#5-codes-from-gmail). It works in
+  Chrome, Edge, Brave and other Chromium browsers; it has not been tried in Firefox.
 - Not every website's code box is recognised. The toolbar button and the right-click menu cover those.
 - In Firefox the extension has to be loaded again after each restart. There is no Safari version;
   Safari on a Mac already does this with an iPhone.
@@ -258,7 +322,8 @@ push and pull request; the badge at the top of this page shows the latest result
 | --- | --- |
 | Finding the code in a message | 192 sample messages in English, Arabic and 19 other languages; 39 of them are messages that must be ignored |
 | The companion | Automated tests of every route, including the security rules, with Node.js 22 |
-| The extension in Chromium | 36 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone, and pages that try to read or guess the code |
+| The extension in Chromium | 37 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone, and pages that try to read or guess the code |
+| Codes from Gmail | Automated tests with a stand-in for Gmail, one of them in a real browser: the switch, an email arriving, the code offered and filled in. It has been used with one real Gmail account, in Arc, and how Gmail lists conversations was measured there with test emails. The rule that compares Gmail's count before and after an email arrives was run there as well: a code in a conversation of its own was offered 5 seconds after the email arrived, and a second code that joined that conversation while the first was unread was left alone. With the first email archived unread, Gmail listed the second as a new conversation under the first one's words; that is the first case under "It can offer an older code" |
 | Firefox | Not run. The extension is written to the cross-browser rules but has not been loaded in Firefox |
 | Windows and macOS | The launch scripts and start at login run on Windows and macOS build machines. The companion has been used on one Mac. It has not been used on a real Windows PC |
 | Android | Not run on a phone. The steps follow published guides for the forwarding apps; the companion is tested with the requests these send (JSON, form fields, plain text) |
@@ -284,6 +349,14 @@ built by hand, not contain the word you typed. If it shows a
 message without a code, paste the text into *Check a message* to see what was found. If it says the
 phone sent an empty message, the automation is not passing the text on: open it and set the
 shortcut's input to **Shortcut Input**.
+
+**A code from Gmail does not show up.** Click the OTP Bridge button in the toolbar. Under **Codes
+from Gmail** it says which account is read, or that the browser is not signed in to Gmail. If the
+account is right, look at **Activity** on the dashboard. If it says the email joined a conversation
+that has an older unread email in it, that it was already in Gmail before OTP Bridge began
+watching, or that Gmail now shows other first lines for a conversation, the code has to be read
+from the email. Otherwise look at the email: the code has to be in the subject or the first line or
+two, and the email has to be unread and in the inbox.
 
 **Start at login does nothing on Windows.** Run `node companion\cli.js autostart on --visible`.
 

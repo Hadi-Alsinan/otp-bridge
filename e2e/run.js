@@ -80,10 +80,22 @@ function startFixtureServer() {
   const fixtures = await startFixtureServer();
 
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'otp-bridge-e2e-'));
+
+  // The browser gets a copy of the extension that already has the access to
+  // mail.google.com which a user gives by turning on "Codes from Gmail". The
+  // browser asks the user about it in a window of its own, and nothing here
+  // can click that. Everything else in the copy is the extension as it ships.
+  const loaded = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'otp-bridge-e2e-extension-')), 'extension');
+  fs.cpSync(EXTENSION, loaded, { recursive: true });
+  const manifest = JSON.parse(fs.readFileSync(path.join(loaded, 'manifest.json'), 'utf8'));
+  assert.deepEqual(manifest.optional_host_permissions, ['https://mail.google.com/*']);
+  manifest.host_permissions.push(...manifest.optional_host_permissions);
+  delete manifest.optional_host_permissions;
+  fs.writeFileSync(path.join(loaded, 'manifest.json'), JSON.stringify(manifest, null, 2));
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     viewport: { width: 1100, height: 820 },
-    args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
+    args: [`--disable-extensions-except=${loaded}`, `--load-extension=${loaded}`],
   });
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 15000 });
@@ -812,6 +824,109 @@ function startFixtureServer() {
     await page.close();
   });
 
+  test('gmail: with the popup switch on, a code that arrives by email is offered', async () => {
+    const popup = await context.newPage();
+    await popup.setViewportSize({ width: 340, height: 420 });
+    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+    await popup.locator('#view-online').waitFor({ state: 'visible', timeout: 10000 });
+    await popup.waitForFunction(() => document.querySelector('#mail-line').textContent.startsWith('Off.'));
+    assert.equal(await popup.locator('#mail-on').isChecked(), false, 'off until the user turns it on');
+
+    // Gmail's part is played inside the background script: its requests to
+    // mail.google.com are answered with a list of unread mail made up here.
+    // The list is built the way Gmail builds it: one entry for a conversation
+    // with unread mail, with the newest email's id and time and the oldest
+    // unread email's first lines, and a count of those conversations.
+    // Opening the popup has just woken the background script up.
+    const [background] = context.serviceWorkers();
+    let serial = 0;
+    const mail = (from, subject, summary, ageMs = 1000) => {
+      serial += 1;
+      const at = Date.now() - ageMs;
+      return { from, subject, summary, at, id: ((BigInt(at) << 20n) + BigInt(serial)).toString() };
+    };
+    const mailbox = (entries, count = entries.length) => background.evaluate(({ list, total }) => {
+      const real = globalThis.realFetch || (globalThis.realFetch = globalThis.fetch);
+      const stamp = (at) => new Date(at).toISOString().replace(/\.\d+Z$/, 'Z');
+      const xml = `<?xml version="1.0" encoding="UTF-8"?><feed version="0.3" xmlns="http://purl.org/atom/ns#">
+<title>Gmail - Inbox for me@example.com</title><fullcount>${total}</fullcount>
+${list.map((m) => `<entry><title>${m.subject}</title><summary>${m.summary}</summary>
+<modified>${stamp(m.at)}</modified><issued>${stamp(m.at)}</issued>
+<id>tag:gmail.google.com,2004:${m.id}</id><author><name>${m.from}</name><email>no-reply@example.com</email></author></entry>`).join('\n')}
+</feed>`;
+      globalThis.gmailAsked = globalThis.gmailAsked || 0;
+      globalThis.fetch = (input, init) => {
+        const url = new URL(typeof input === 'string' ? input : input.url);
+        if (url.origin !== 'https://mail.google.com') return real(input, init);
+        globalThis.gmailAsked += 1;
+        const first = url.pathname === '/mail/u/0/feed/atom';   // one account is signed in
+        return Promise.resolve(new Response(first ? xml : 'not found', { status: first ? 200 : 404 }));
+      };
+    }, { list: entries, total: count });
+    const asked = () => background.evaluate(() => globalThis.gmailAsked);
+    const activity = async () => (await (await fetch(`${base}/api/state`, { headers: { Authorization: `Bearer ${config.localToken}` } })).json())
+      .activity.map((line) => line.text);
+
+    // This morning's code from Fabrikam was never opened. It is still unread.
+    const morning = mail('Fabrikam', 'Your Fabrikam code', 'Use 314159 to sign in.', 9 * 60 * 60 * 1000);
+    await mailbox([morning]);
+
+    // While the switch is off, a page that waits for a code does not make the
+    // extension look at the mailbox.
+    const page = await open('/single.html');
+    await expectNoChip(page, 5000);
+    assert.equal(await asked(), 0, 'Gmail is left alone until the switch is on');
+
+    // The switch, clicked the way a user clicks it.
+    await popup.bringToFront();
+    await popup.locator('#mail-on').check();
+    await popup.waitForFunction(() => /^On for me@example\.com\./.test(document.querySelector('#mail-line').textContent), null, { timeout: 10000 });
+    await shot(popup, 'popup-gmail');
+    await page.bringToFront();
+    await expectNoChip(page, 6000);            // the page waits, and the mailbox is watched
+    const before = await asked();
+    assert.ok(before >= 2, 'the mailbox was looked at before any mail arrived');
+
+    // A sign-in code arrives from Northwind, and a note from a friend.
+    const code = mail('Northwind', 'Your Northwind sign-in code', 'Use 482913 to finish signing in. It is valid for 10 minutes.');
+    const note = mail('A friend', 'Lunch?', 'Shall we meet tomorrow');
+    await mailbox([note, code, morning]);
+    const sentAt = Date.now();
+    await waitChip(page, 15000);
+    const latency = Date.now() - sentAt;
+    assert.match(await chipText(page), /Fill code 482 913 From Northwind \(Gmail\)/);
+    await shot(page, 'chip-gmail');
+    assert.deepEqual(app.store.list().map((entry) => [entry.code, entry.sender]), [['482913', 'Northwind (Gmail)']]);
+    await clickRow(page, page);
+    assert.equal(await page.inputValue('#otp'), '482913');
+
+    // Fabrikam sends a new code. Gmail puts it in this morning's conversation:
+    // the entry gets the new email's id and time, keeps the morning's first
+    // lines, and the count of unread conversations stays where it was.
+    const again = { ...mail('Fabrikam', 'Your Fabrikam code', 'Use 314159 to sign in.'), summary: morning.summary };
+    await mailbox([again, note, code], 3);
+    await sleep(7000);
+    assert.equal(await chip(page).count(), 0, 'the morning code is not offered as if it had just arrived');
+    assert.equal(app.store.list().length, 1);
+    assert.ok((await activity()).some((line) => /^An email from Fabrikam joined a Gmail conversation that has an older unread email in it/.test(line)),
+      'the dashboard says why no code was read');
+    const looks = await asked() - before;
+    assert.ok(looks >= 2 && looks <= 12, `Gmail was asked ${looks} times in about fifteen seconds`);
+
+    // Off again, and Gmail is left alone.
+    await popup.bringToFront();
+    await popup.locator('#mail-on').uncheck();
+    await popup.waitForFunction(() => document.querySelector('#mail-line').textContent.startsWith('Off.'));
+    await page.bringToFront();
+    const afterOff = await asked();
+    await mailbox([mail('Northwind', 'Your code', 'Use 999000 to sign in.'), again, note, code]);
+    await expectNoChip(page, 6000);
+    assert.equal(await asked(), afterOff, 'not one request to Gmail once it is off');
+    await popup.close();
+    await page.close();
+    return `shown ${latency} ms after the mail arrived`;
+  });
+
   test('screenshots of the dashboard, phone page and dark mode', async () => {
     await sms('Your Delta verification code is 778899', { sender: 'Delta Bank' });
     const page = await context.newPage();
@@ -926,6 +1041,7 @@ function startFixtureServer() {
   await app.close().catch(() => {});
   fixtures.server.close();
   fs.rmSync(userDataDir, { recursive: true, force: true });
+  fs.rmSync(path.dirname(loaded), { recursive: true, force: true });
 
   console.log(`\n${selected.length - failed - skipped} passed, ${failed} failed, ${skipped} skipped`);
   process.exit(failed ? 1 : 0);
