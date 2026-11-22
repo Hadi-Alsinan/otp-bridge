@@ -321,7 +321,7 @@ push and pull request; the badge at the top of this page shows the latest result
 | Part | How it was checked |
 | --- | --- |
 | Finding the code in a message | 192 sample messages in English, Arabic and 19 other languages; 39 of them are messages that must be ignored |
-| The companion | Automated tests of every route, including the security rules, with Node.js 22 |
+| The companion | Automated tests of every route, including the security rules, with Node.js 22. One test in a real browser checks that a long message stays inside its card on the dashboard |
 | The extension in Chromium | 37 tests in a real browser: plain fields, split boxes, real React forms, a bank page in a frame, pop-up dialogs, right-to-left pages, pages that must be left alone, and pages that try to read or guess the code |
 | Codes from Gmail | Automated tests with a stand-in for Gmail, one of them in a real browser: the switch, an email arriving, the code offered and filled in. It has been used with one real Gmail account, in Arc, and how Gmail lists conversations was measured there with test emails. The rule that compares Gmail's count before and after an email arrives was run there as well: a code in a conversation of its own was offered 5 seconds after the email arrived, and a second code that joined that conversation while the first was unread was left alone. With the first email archived unread, Gmail listed the second as a new conversation under the first one's words; that is the first case under "It can offer an older code" |
 | Firefox | Not run. The extension is written to the cross-browser rules but has not been loaded in Firefox |
