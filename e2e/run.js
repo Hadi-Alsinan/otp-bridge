@@ -927,6 +927,26 @@ ${list.map((m) => `<entry><title>${m.subject}</title><summary>${m.summary}</summ
     return `shown ${latency} ms after the mail arrived`;
   });
 
+  test('dashboard: a long message does not push a code row out of its card', async () => {
+    await sms('Your Northwind verification code is 482913. It is valid for ten minutes and can be used once. '
+      + 'If you did not ask for it, you can ignore this message and nothing will change on your account.');
+    const page = await context.newPage();
+    await page.goto(`${base}/?k=${config.localToken}`);
+    await page.locator('.code-row').first().waitFor({ state: 'visible', timeout: 10000 });
+    for (const width of [1100, 760, 420]) {
+      await page.setViewportSize({ width, height: 820 });
+      const boxes = await page.evaluate(() => {
+        const edge = (selector) => document.querySelector(selector).getBoundingClientRect().right;
+        return { card: edge('#codes-card'), row: edge('.code-row'), button: edge('.code-row button'), page: document.documentElement.scrollWidth };
+      });
+      assert.ok(boxes.row <= boxes.card, `at ${width}px the row ends at ${boxes.row}, the card at ${boxes.card}`);
+      assert.ok(boxes.button <= boxes.row, `at ${width}px the Copy button stays inside its row`);
+      assert.ok(boxes.page <= width, `at ${width}px the page does not scroll sideways`);
+    }
+    await page.setViewportSize({ width: 1100, height: 820 });
+    await page.close();
+  });
+
   test('screenshots of the dashboard, phone page and dark mode', async () => {
     await sms('Your Delta verification code is 778899', { sender: 'Delta Bank' });
     const page = await context.newPage();

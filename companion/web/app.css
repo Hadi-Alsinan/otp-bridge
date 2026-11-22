@@ -237,7 +237,9 @@ textarea { width: 100%; min-height: 78px; resize: vertical; }
 
 /* ---- codes ---- */
 
-.codes { margin-top: 12px; display: grid; gap: 8px; }
+/* The column may be narrower than its longest line: a long message is cut
+   short with "…" inside the row and does not widen the row past the card. */
+.codes { margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 
 .code-row {
   display: flex;
