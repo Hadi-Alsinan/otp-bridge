@@ -125,7 +125,51 @@ async function refresh() {
     : phone.lastCodeAt ? `Phone: last code ${ago(phone.lastCodeAt, status.now)}.`
       : 'Phone: set up. Waiting for the next code.';
   renderCodes();
+  refreshMail();
 }
+
+// --- codes from Gmail -----------------------------------------------------------
+
+const MAIL_ACCESS = { origins: ['https://mail.google.com/*'] };
+const MAIL_OFF = 'Off. Turn it on to get the codes that arrive by email as well.';
+
+function mailLine(mail) {
+  if (!mail || !mail.on) return MAIL_OFF;
+  if (mail.problem === 'signed-out') return 'On, but this browser is not signed in to Gmail. Sign in there and codes from your email will show up.';
+  if (mail.problem) return 'On, but Gmail did not answer just now.';
+  const who = mail.accounts && mail.accounts.length ? ` for ${mail.accounts.join(', ')}` : '';
+  return `On${who}. Your unread mail is looked at while a page asks for a code and when this window opens, and stays on this computer.`;
+}
+
+async function refreshMail() {
+  const mail = await api.runtime.sendMessage({ type: 'mail-status' }).catch(() => null);
+  $('#mail-on').checked = !!mail && mail.on === true;
+  $('#mail-line').textContent = mailLine(mail);
+}
+
+$('#mail-on').addEventListener('change', async (event) => {
+  const line = $('#mail-line');
+  if (!event.target.checked) {
+    await api.runtime.sendMessage({ type: 'mail-set', on: false }).catch(() => null);
+    // Hand the access back as well; it is asked for again when this is turned on.
+    await api.permissions.remove(MAIL_ACCESS).catch(() => false);
+    refreshMail();
+    return;
+  }
+  // The browser asks the user here, and may close this popup while it does.
+  // So the choice is saved first; without the access it counts as off.
+  const asking = api.permissions.request(MAIL_ACCESS);
+  api.runtime.sendMessage({ type: 'mail-set', on: true }).catch(() => null);
+  line.textContent = 'Waiting for the browser to allow it…';
+  const allowed = await Promise.resolve(asking).catch(() => false);
+  if (!allowed) {
+    await api.runtime.sendMessage({ type: 'mail-set', on: false }).catch(() => null);
+    event.target.checked = false;
+    line.textContent = 'The browser did not allow it, so this stays off.';
+    return;
+  }
+  refreshMail();
+});
 
 function openTab(url) {
   api.tabs.create({ url });

@@ -108,5 +108,9 @@ input[type="text"] {
 .code .meta { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .code .buttons { display: flex; flex-direction: column; gap: 4px; }
 .code button { padding: 3px 10px; font-size: 12px; }
+.source { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.switch { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.switch input { margin: 0; width: 15px; height: 15px; accent-color: var(--accent); }
+.source .small { margin: 2px 0 0 23px; }
 footer { display: flex; justify-content: space-between; margin-top: 6px; border-top: 1px solid var(--border); padding-top: 8px; }
 #view-offline .link { margin-top: 10px; }

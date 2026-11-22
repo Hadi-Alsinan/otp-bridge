@@ -14,6 +14,8 @@ const APP_ID = 'otp-bridge';
 const SESSION_COOKIE = 'otp_bridge_session';
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_MESSAGE_CHARS = 4000;
+const MAX_MAIL_MESSAGES = 20;     // as many as Gmail lists at once
+const MAIL_SERVICE = 'Gmail';
 const MAX_LONG_POLL_SECONDS = 25;
 const MAX_WAITERS = 200;
 const BAD_TOKEN_LIMIT = 30;           // wrong phone links per minute, per address
@@ -268,10 +270,11 @@ function createCompanion(options) {
   let networkCache = null;
   let localHostname;
 
-  function note(kind, text) {
+  /** A line for the dashboard's activity list, and for the log. `logged` is what the log gets when that must differ. */
+  function note(kind, text, logged = text) {
     state.activity.unshift({ at: now(), kind, text });
     if (state.activity.length > 30) state.activity.length = 30;
-    log(text);
+    log(logged);
   }
 
   /**
@@ -657,6 +660,41 @@ function createCompanion(options) {
       const outcome = acceptMessage(text, TEST_SENDER);
       if (outcome.codeFound) note('code', 'Test code created.');
       sendJson(res, 200, { ok: true, codeFound: outcome.codeFound, code: outcome.codeFound ? outcome.entry.code : null });
+      return;
+    }
+
+    // Email the browser extension read in the mailbox this browser is signed in
+    // to. Most of it has no code in it, and that is not worth a line of activity.
+    if (route === 'POST /api/mail') {
+      const body = await readJson(req);
+      const messages = Array.isArray(body.messages) ? body.messages.slice(0, MAX_MAIL_MESSAGES) : [];
+      let codes = 0;
+      for (const message of messages) {
+        const text = message && typeof message.text === 'string' ? message.text.slice(0, MAX_MESSAGE_CHARS) : '';
+        if (!text.trim()) continue;
+        const from = typeof message.from === 'string' ? cleanLine(message.from, 40) : '';
+        const outcome = acceptMessage(text, from ? `${from} (${MAIL_SERVICE})` : MAIL_SERVICE);
+        if (!outcome.codeFound) continue;
+        codes += 1;
+        if (!outcome.duplicate) note('code', `Code received from ${MAIL_SERVICE}.`);
+      }
+      // Mail the extension saw but could not read a code from safely. Said
+      // here, or the user would only see nothing happen. The sender's name is
+      // for the activity list, which is kept in memory; the log, which can be a
+      // file, gets the line without it.
+      const skipped = Array.isArray(body.skipped) ? body.skipped.slice(0, MAX_MAIL_MESSAGES) : [];
+      for (const item of skipped) {
+        const from = item && typeof item.from === 'string' ? cleanLine(item.from, 40) : '';
+        const reason = item && item.reason;
+        const line = (name) => {
+          const who = `An email${name ? ` from ${name}` : ''}`;
+          if (reason === 'early') return `${who} was already in ${MAIL_SERVICE} before OTP Bridge began watching. It cannot tell whether ${MAIL_SERVICE} shows this email or an older one, so no code was read from it.`;
+          if (reason === 'changed') return `${MAIL_SERVICE} now shows other first lines for a conversation${name ? ` with ${name}` : ''}, and no new email arrived. OTP Bridge cannot tell which email they are from, so no code was read from them.`;
+          return `${who} joined a ${MAIL_SERVICE} conversation that has an older unread email in it. ${MAIL_SERVICE} shows the older email's first lines there, so no code was read from it.`;
+        };
+        note('info', line(from), line(''));
+      }
+      sendJson(res, 200, { ok: true, codes });
       return;
     }
 

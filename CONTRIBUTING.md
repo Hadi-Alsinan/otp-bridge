@@ -64,6 +64,8 @@ them needs a discussion in an issue first.
   nothing else, and there is no build step. Packages are fine in tests and scripts.
 - **Codes stay on the user's own devices.** Nothing is sent to the internet. Codes are kept in
   memory for ten minutes and never written to disk. Messages without a code are dropped on arrival.
+  The one thing fetched from the internet is the user's own list of unread mail from Gmail, and
+  only after the user has switched on **Codes from Gmail**.
 - **A website sees nothing until the user clicks.** See "Privacy and security" in the README for
   the rules the extension follows.
 - **Plain words.** The dashboard and the phone page are read by people who are not technical. Say

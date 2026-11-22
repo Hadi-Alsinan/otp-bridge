@@ -783,7 +783,7 @@
       close.dataset.action = 'close';
       card.append(rows, close);
       // For screen readers; attributes cannot be searched the way text can.
-      card.setAttribute('aria-label', `Verification code ${entries[0].code} from your phone. `
+      card.setAttribute('aria-label', `Verification code ${entries[0].code} from ${entries[0].sender || 'your phone'}. `
         + 'Press the down arrow, then Enter, to fill it in.');
       activeRow = Math.min(activeRow, entries.length - 1);
       armedAt = performance.now() + CLICK_DELAY_MS;
